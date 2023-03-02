@@ -1,0 +1,49 @@
+@import '~office-ui-fabric-react/dist/sass/References.scss';
+* {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+    background-color: #f7f9fa;
+    padding: 20px;
+    .header {
+        font-size: 24px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0 0 15px 0;
+    }
+    .filterSection {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        .searchFlex {
+            display: flex;
+            align-items: flex-end;
+            label {
+                padding: 0;
+            }
+        }
+    }
+    .newBtn {
+        background-color: #e47100;
+        border: none;
+    }
+    .newBtn:hover {
+        border: none;
+        background-color: #e47100 !important;
+    }
+}
+
+.extraPeople {
+    position: relative;
+    z-index: 2;
+    background: #038387;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-left: -16px;
+    cursor: pointer;
+}

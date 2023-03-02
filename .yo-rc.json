@@ -1,0 +1,16 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "version": "1.14.0",
+    "libraryName": "hr-pandalogusa",
+    "libraryId": "5ae7fe58-7511-42a7-a352-3bc3ba64549d",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "HRPandalogusa",
+    "solutionShortDescription": "HRPandalogusa description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "webpart"
+  }
+}

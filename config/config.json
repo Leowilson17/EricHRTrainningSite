@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "hr-pandalogusa-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/hrPandalogusa/HrPandalogusaWebPart.js",
+          "manifest": "./src/webparts/hrPandalogusa/HrPandalogusaWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "HrPandalogusaWebPartStrings": "lib/webparts/hrPandalogusa/loc/{locale}.js"
+  }
+}
