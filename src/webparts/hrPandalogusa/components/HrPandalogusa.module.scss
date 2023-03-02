@@ -19,7 +19,7 @@
             display: flex;
             align-items: flex-end;
             label {
-                padding: 0;
+                padding: 2;
             }
         }
     }
@@ -46,4 +46,65 @@
     border-radius: 50%;
     margin-left: -16px;
     cursor: pointer;
+}
+
+.modalCustomDesign {
+    .header {
+        h2 {
+            margin: 5px;
+            text-align: center;
+            color: #e47100;
+        }
+    }
+    .modalBox {
+        height: 200px;
+    }
+    .detailsSection {
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        margin: 10px 0;
+        label {
+            width: 90px;
+        }
+        .fileStyle {
+            // margin-top: 10px;
+            background-color: #c1182220;
+            padding: 10px;
+            border-radius: 4px;
+            width: 290px;
+        }
+        .fileStyle::-webkit-file-upload-button {
+            cursor: pointer;
+            background-color: #c11822 !important;
+            padding: 10px;
+            border: 0;
+            border-radius: 4px;
+            margin-right: 10px;
+            color: #fff;
+        }
+        .fileStyle::file-selector-button {
+            cursor: pointer;
+            background-color: #c11822 !important;
+            padding: 10px;
+            border: 0;
+            border-radius: 4px;
+            margin-right: 10px;
+            color: #fff;
+        }
+    }
+    .btnSection {
+        margin: 0 30px;
+        display: flex;
+        justify-content: flex-end;
+        .cancelBtn {
+            margin-right: 15px;
+            background-color: #e47100;
+            color: #fff;
+            border: none;
+        }
+        .submitBtn {
+            border: none;
+        }
+    }
 }
