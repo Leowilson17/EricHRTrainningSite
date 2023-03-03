@@ -45,14 +45,6 @@ interface IItems {
   DocTitle: string;
 }
 
-// error handling
-const obj = {
-  titleValidation: false,
-  fileValidation: false,
-  signValidation: false,
-  overAllValidation: false,
-};
-
 function Dashboard(props: any) {
   let allPeoples = props.peopleList;
 
@@ -127,7 +119,30 @@ function Dashboard(props: any) {
                     cursor: "pointer",
                   }}
                 >
-                  <div title={data.Approvers[0].text}>
+                  {data.Approvers.map((app, index) => {
+                    if (index < 3) {
+                      return (
+                        <div title={data.Approvers[index].text}>
+                          <Persona
+                            styles={{
+                              root: {
+                                display: "inline",
+                              },
+                            }}
+                            showOverflowTooltip
+                            size={PersonaSize.size24}
+                            presence={PersonaPresence.none}
+                            showInitialsUntilImageLoads={true}
+                            imageUrl={
+                              "/_layouts/15/userphoto.aspx?size=S&username=" +
+                              `${data.Approvers[index].secondaryText}`
+                            }
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+                  {/* <div title={data.Approvers[0].text}>
                     <Persona
                       showOverflowTooltip
                       size={PersonaSize.size24}
@@ -138,46 +153,48 @@ function Dashboard(props: any) {
                         `${data.Approvers[0].secondaryText}`
                       }
                     />
-                  </div>
-                  {data.Approvers.length > 1 ? (
-                    <TooltipHost
-                      content={
-                        <ul style={{ margin: 10, padding: 0 }}>
-                          {data.Approvers.map((DName) => {
-                            return (
-                              <li>
-                                <div style={{ display: "flex" }}>
-                                  <Persona
-                                    showOverflowTooltip
-                                    size={PersonaSize.size24}
-                                    presence={PersonaPresence.none}
-                                    showInitialsUntilImageLoads={true}
-                                    imageUrl={
-                                      "/_layouts/15/userphoto.aspx?size=S&username=" +
-                                      `${DName.secondaryText}`
-                                    }
-                                  />
-                                  <Label style={{ marginLeft: 10 }}>
-                                    {DName.text}
-                                  </Label>
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      }
-                      delay={TooltipDelay.zero}
-                      // id={item.ID}
-                      directionalHint={DirectionalHint.bottomCenter}
-                      styles={{ root: { display: "inline-block" } }}
-                    >
-                      <div
-                        className={styles.extraPeople}
-                        // aria-describedby={item.ID}
+                  </div> */}
+                  {data.Approvers.length > 3 ? (
+                    <div>
+                      <TooltipHost
+                        content={
+                          <ul style={{ margin: 10, padding: 0 }}>
+                            {data.Approvers.map((DName) => {
+                              return (
+                                <li style={{ listStyleType: "none" }}>
+                                  <div style={{ display: "flex" }}>
+                                    <Persona
+                                      showOverflowTooltip
+                                      size={PersonaSize.size24}
+                                      presence={PersonaPresence.none}
+                                      showInitialsUntilImageLoads={true}
+                                      imageUrl={
+                                        "/_layouts/15/userphoto.aspx?size=S&username=" +
+                                        `${DName.secondaryText}`
+                                      }
+                                    />
+                                    <Label style={{ marginLeft: 10 }}>
+                                      {DName.text}
+                                    </Label>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        }
+                        delay={TooltipDelay.zero}
+                        // id={item.ID}
+                        directionalHint={DirectionalHint.bottomCenter}
+                        styles={{ root: { display: "inline-block" } }}
                       >
-                        {data.Approvers.length}
-                      </div>
-                    </TooltipHost>
+                        <div
+                          className={styles.extraPeople}
+                          // aria-describedby={item.ID}
+                        >
+                          {data.Approvers.length}
+                        </div>
+                      </TooltipHost>
+                    </div>
                   ) : null}
                 </div>
               }
@@ -215,57 +232,71 @@ function Dashboard(props: any) {
                     cursor: "pointer",
                   }}
                 >
-                  <div title={data.PendingMembers[0].text}>
-                    <Persona
-                      showOverflowTooltip
-                      size={PersonaSize.size24}
-                      presence={PersonaPresence.none}
-                      showInitialsUntilImageLoads={true}
-                      imageUrl={
-                        "/_layouts/15/userphoto.aspx?size=S&username=" +
-                        `${data.PendingMembers[0].secondaryText}`
-                      }
-                    />
-                  </div>
-                  {data.PendingMembers.length > 1 ? (
-                    <TooltipHost
-                      content={
-                        <ul style={{ margin: 10, padding: 0 }}>
-                          {data.PendingMembers.map((DName) => {
-                            return (
-                              <li>
-                                <div style={{ display: "flex" }}>
-                                  <Persona
-                                    showOverflowTooltip
-                                    size={PersonaSize.size24}
-                                    presence={PersonaPresence.none}
-                                    showInitialsUntilImageLoads={true}
-                                    imageUrl={
-                                      "/_layouts/15/userphoto.aspx?size=S&username=" +
-                                      `${DName.secondaryText}`
-                                    }
-                                  />
-                                  <Label style={{ marginLeft: 10 }}>
-                                    {DName.text}
-                                  </Label>
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      }
-                      delay={TooltipDelay.zero}
-                      // id={item.ID}
-                      directionalHint={DirectionalHint.bottomCenter}
-                      styles={{ root: { display: "inline-block" } }}
-                    >
-                      <div
-                        className={styles.extraPeople}
-                        // aria-describedby={item.ID}
+                  {data.PendingMembers.map((app, index) => {
+                    if (index < 3) {
+                      return (
+                        <div title={data.PendingMembers[index].text}>
+                          <Persona
+                            styles={{
+                              root: {
+                                display: "inline",
+                              },
+                            }}
+                            showOverflowTooltip
+                            size={PersonaSize.size24}
+                            presence={PersonaPresence.none}
+                            showInitialsUntilImageLoads={true}
+                            imageUrl={
+                              "/_layouts/15/userphoto.aspx?size=S&username=" +
+                              `${data.PendingMembers[index].secondaryText}`
+                            }
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+
+                  {data.PendingMembers.length > 3 ? (
+                    <div>
+                      <TooltipHost
+                        content={
+                          <ul style={{ margin: 10, padding: 0 }}>
+                            {data.PendingMembers.map((DName) => {
+                              return (
+                                <li style={{ listStyleType: "none" }}>
+                                  <div style={{ display: "flex" }}>
+                                    <Persona
+                                      showOverflowTooltip
+                                      size={PersonaSize.size24}
+                                      presence={PersonaPresence.none}
+                                      showInitialsUntilImageLoads={true}
+                                      imageUrl={
+                                        "/_layouts/15/userphoto.aspx?size=S&username=" +
+                                        `${DName.secondaryText}`
+                                      }
+                                    />
+                                    <Label style={{ marginLeft: 10 }}>
+                                      {DName.text}
+                                    </Label>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        }
+                        delay={TooltipDelay.zero}
+                        // id={item.ID}
+                        directionalHint={DirectionalHint.bottomCenter}
+                        styles={{ root: { display: "inline-block" } }}
                       >
-                        {data.PendingMembers.length}
-                      </div>
-                    </TooltipHost>
+                        <div
+                          className={styles.extraPeople}
+                          // aria-describedby={item.ID}
+                        >
+                          {data.PendingMembers.length}
+                        </div>
+                      </TooltipHost>
+                    </div>
                   ) : null}
                 </div>
               }
@@ -294,57 +325,71 @@ function Dashboard(props: any) {
                     cursor: "pointer",
                   }}
                 >
-                  <div title={data.ApprovedMembers[0].text}>
-                    <Persona
-                      showOverflowTooltip
-                      size={PersonaSize.size24}
-                      presence={PersonaPresence.none}
-                      showInitialsUntilImageLoads={true}
-                      imageUrl={
-                        "/_layouts/15/userphoto.aspx?size=S&username=" +
-                        `${data.ApprovedMembers[0].secondaryText}`
-                      }
-                    />
-                  </div>
-                  {data.ApprovedMembers.length > 1 ? (
-                    <TooltipHost
-                      content={
-                        <ul style={{ margin: 10, padding: 0 }}>
-                          {data.ApprovedMembers.map((DName) => {
-                            return (
-                              <li>
-                                <div style={{ display: "flex" }}>
-                                  <Persona
-                                    showOverflowTooltip
-                                    size={PersonaSize.size24}
-                                    presence={PersonaPresence.none}
-                                    showInitialsUntilImageLoads={true}
-                                    imageUrl={
-                                      "/_layouts/15/userphoto.aspx?size=S&username=" +
-                                      `${DName.secondaryText}`
-                                    }
-                                  />
-                                  <Label style={{ marginLeft: 10 }}>
-                                    {DName.text}
-                                  </Label>
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      }
-                      delay={TooltipDelay.zero}
-                      // id={item.ID}
-                      directionalHint={DirectionalHint.bottomCenter}
-                      styles={{ root: { display: "inline-block" } }}
-                    >
-                      <div
-                        className={styles.extraPeople}
-                        // aria-describedby={item.ID}
+                  {data.ApprovedMembers.map((app, index) => {
+                    if (index < 3) {
+                      return (
+                        <div title={data.ApprovedMembers[index].text}>
+                          <Persona
+                            styles={{
+                              root: {
+                                display: "inline",
+                              },
+                            }}
+                            showOverflowTooltip
+                            size={PersonaSize.size24}
+                            presence={PersonaPresence.none}
+                            showInitialsUntilImageLoads={true}
+                            imageUrl={
+                              "/_layouts/15/userphoto.aspx?size=S&username=" +
+                              `${data.ApprovedMembers[index].secondaryText}`
+                            }
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+
+                  {data.ApprovedMembers.length > 3 ? (
+                    <div>
+                      <TooltipHost
+                        content={
+                          <ul style={{ margin: 10, padding: 0 }}>
+                            {data.ApprovedMembers.map((DName) => {
+                              return (
+                                <li style={{ listStyleType: "none" }}>
+                                  <div style={{ display: "flex" }}>
+                                    <Persona
+                                      showOverflowTooltip
+                                      size={PersonaSize.size24}
+                                      presence={PersonaPresence.none}
+                                      showInitialsUntilImageLoads={true}
+                                      imageUrl={
+                                        "/_layouts/15/userphoto.aspx?size=S&username=" +
+                                        `${DName.secondaryText}`
+                                      }
+                                    />
+                                    <Label style={{ marginLeft: 10 }}>
+                                      {DName.text}
+                                    </Label>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        }
+                        delay={TooltipDelay.zero}
+                        // id={item.ID}
+                        directionalHint={DirectionalHint.bottomCenter}
+                        styles={{ root: { display: "inline-block" } }}
                       >
-                        {data.ApprovedMembers.length}
-                      </div>
-                    </TooltipHost>
+                        <div
+                          className={styles.extraPeople}
+                          // aria-describedby={item.ID}
+                        >
+                          {data.ApprovedMembers.length}
+                        </div>
+                      </TooltipHost>
+                    </div>
                   ) : null}
                 </div>
               }
@@ -375,6 +420,7 @@ function Dashboard(props: any) {
                 Mail: item.Approvers,
                 File: {},
                 FileName: item.Title,
+                Valid: "",
               };
               setValueObj(getDataObj);
               setHideModal(true);
@@ -410,8 +456,10 @@ function Dashboard(props: any) {
     Id: 0,
     Title: "",
     Mail: [],
-    File: {},
+    // File: {},
+    File: undefined,
     FileName: "",
+    Valid: "",
   };
 
   // style variables
@@ -429,6 +477,7 @@ function Dashboard(props: any) {
   const dropdownStyles: Partial<IDropdownStyles> = {
     dropdown: {
       width: 200,
+      marginRight: 20,
       "&:focus::after": {
         borderColor: "rgb(96, 94, 92)",
       },
@@ -504,23 +553,26 @@ function Dashboard(props: any) {
   const textFieldDesign = {
     root: {
       width: "90%",
-      margin: "0 10px",
+      margin: "0 13px",
     },
     fieldGroup: {
-      // border: "1px solid rgb(96, 94, 92) !important",
+      backgroundColor: "#f5f8fa !important",
+      border: "1px solid #cbd6e2 !important",
       "&::after": {
-        border: "2px solid rgb(96, 94, 92) !important",
+        border: "1px solid rgb(111 165 224) !important",
       },
     },
   };
   const peoplePickerStyle = {
     root: {
-      width: 307,
-      margin: "0 10px 0 0",
+      background: "#f5f8fa",
+      width: 293,
+      margin: "0 10px",
       ".ms-BasePicker-text": {
         maxHeight: "100px",
         overflowX: "hidden",
         padding: "3px 5px",
+        border: "1px solid rgb(91 144 214)",
         "::after": {
           border: "none",
         },
@@ -587,7 +639,7 @@ function Dashboard(props: any) {
 
           getDataArray.push({
             ID: data.ListItemAllFields["Id"],
-            Title: data.Name,
+            Title: data.Name.split(".")[0],
             Status: data.ListItemAllFields["Status"],
             PendingMembers: pendingMembers,
             ApprovedMembers: approvedMembers,
@@ -638,6 +690,27 @@ function Dashboard(props: any) {
     setValueObj({ ...getDatatempArray });
   }
 
+  // form validation
+  function validation() {
+    let checkObj = valueObj;
+    let isError = false;
+    // console.log(checkObj);
+    if (!checkObj.Title) {
+      isError = true;
+      checkObj.Valid = "Please Enter Title";
+    } else if (!checkObj.File) {
+      isError = true;
+      checkObj.Valid = "Please Choose File";
+    } else if (checkObj.Mail.length == 0) {
+      isError = true;
+      checkObj.Valid = "Please Select Signatories";
+    }
+    if (!isError) {
+      setHideModal(false);
+    }
+    setValueObj({ ...checkObj });
+    addFile();
+  }
   // add file
   function addFile() {
     let updateData = valueObj;
@@ -673,11 +746,6 @@ function Dashboard(props: any) {
       });
   }
 
-  // edit function
-  // function editFunction(id) {
-  // let editArr =
-  // }
-
   // useEffect
   React.useEffect(() => {
     getDatafromLibrary();
@@ -695,18 +763,7 @@ function Dashboard(props: any) {
           <div className={styles.filterSection}>
             <div className={styles.searchFlex}>
               <div>
-                <Label>Approvers</Label>
-                <SearchBox
-                  placeholder="search"
-                  styles={searchStyle}
-                  value={FilterKeys.Approvers}
-                  onChange={(e, text) => {
-                    filterFunction("Approvers", text);
-                  }}
-                />
-              </div>
-              <div>
-                <Label>Title</Label>
+                <Label>File Name</Label>
                 <SearchBox
                   placeholder="search"
                   styles={searchStyle}
@@ -725,6 +782,17 @@ function Dashboard(props: any) {
                   selectedKey={FilterKeys.Status}
                   onChange={(e, option) => {
                     filterFunction("Status", option["text"]);
+                  }}
+                />
+              </div>
+              <div>
+                <Label>Approvers</Label>
+                <SearchBox
+                  placeholder="search"
+                  styles={searchStyle}
+                  value={FilterKeys.Approvers}
+                  onChange={(e, text) => {
+                    filterFunction("Approvers", text);
                   }}
                 />
               </div>
@@ -777,27 +845,40 @@ function Dashboard(props: any) {
             style={valueObj.type == "new" ? { height: 230 } : { height: 270 }}
           >
             <div className={styles.detailsSection}>
-              <Label>Title:</Label>
+              <div>
+                <Label>Title</Label>
+              </div>
+              <div style={{ width: 0 }}>:</div>
               <TextField
                 styles={textFieldDesign}
                 value={valueObj.Title}
                 readOnly={valueObj.type == "edit"}
                 onChange={(name) => {
+                  valueObj.Valid = "";
+                  setValueObj(valueObj);
                   Onchangehandler("Title", name.target["value"]);
                 }}
               ></TextField>
             </div>
             {/* file */}
             <div className={styles.detailsSection}>
-              <Label>File:</Label>
-              <input
-                className={styles.fileStyle}
-                type="file"
-                id="uploadFile"
-                onChange={(file) => {
-                  Onchangehandler("File", file.target["files"][0]);
-                }}
-              />
+              <div>
+                <Label>File</Label>
+              </div>
+              <div>:</div>
+              <div>
+                <input
+                  style={{ margin: "0 10px" }}
+                  className={styles.fileStyle}
+                  type="file"
+                  id="uploadFile"
+                  onChange={(file) => {
+                    valueObj.Valid = "";
+                    setValueObj(valueObj);
+                    Onchangehandler("File", file.target["files"][0]);
+                  }}
+                />
+              </div>
             </div>
             {valueObj.Id != 0 && (
               <>
@@ -813,13 +894,18 @@ function Dashboard(props: any) {
               className={styles.detailsSection}
               style={{ alignItems: "flex-start" }}
             >
-              <Label>Signatories:</Label>
+              <div>
+                <Label>Signatories</Label>
+              </div>
+              <div>:</div>
               <NormalPeoplePicker
                 styles={peoplePickerStyle}
                 onResolveSuggestions={GetUserDetails}
                 itemLimit={10}
                 selectedItems={valueObj.Mail}
                 onChange={(selectedUser) => {
+                  valueObj.Valid = "";
+                  setValueObj(valueObj);
                   Onchangehandler("Mail", selectedUser);
                 }}
               />
@@ -828,10 +914,19 @@ function Dashboard(props: any) {
 
           {/* btn section */}
           <div className={styles.btnSection}>
+            {valueObj.Valid && (
+              <div>
+                <Label style={{ color: "red", marginRight: 10 }}>
+                  {valueObj.Valid}
+                </Label>
+              </div>
+            )}
+
             <PrimaryButton
               className={styles.cancelBtn}
               text="Cancel"
               onClick={() => {
+                setValueObj(getDataObj);
                 setHideModal(false);
               }}
             />
@@ -840,8 +935,8 @@ function Dashboard(props: any) {
               text="Submit"
               color="primary"
               onClick={() => {
-                addFile();
-                setHideModal(false);
+                validation();
+                // addFile();
               }}
             />
           </div>
