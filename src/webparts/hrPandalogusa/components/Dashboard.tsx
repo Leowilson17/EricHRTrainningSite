@@ -22,12 +22,13 @@ import {
   DirectionalHint,
   mergeStyleSets,
   Modal,
+  IModalStyles,
   NormalPeoplePicker,
   TextField,
 } from "@fluentui/react";
 import { sp } from "@pnp/sp/presets/all";
 import { useState } from "react";
-import * as _ from "lodash";
+import Pagination from "office-ui-fabric-react-pagination";
 
 // master Interface
 interface IItems {
@@ -43,28 +44,64 @@ interface IItems {
   approvedMembersID: number[];
   approversID: number[];
   DocTitle: string;
+  Comments: string;
+  FileName: string;
 }
+
+// interface ITest {
+//   name: string;
+//   age: number;
+//   domain: string;
+//   _boolean: boolean;
+// }
+
+let sortData = [];
+
+const totalPageItems: number = 10;
 
 function Dashboard(props: any) {
   let allPeoples = props.peopleList;
 
+  // let testTS: Partial<ITest> = {
+  //   name: "test",
+  //   age: 12,
+  // };
+
   // variables
+  let filterKeys = {
+    Title: "",
+    Status: "All",
+    Approvers: "",
+  };
+  let getDataObj = {
+    type: "new",
+    Id: 0,
+    Title: "",
+    Mail: [],
+    File: undefined,
+    FileName: "",
+    Valid: "",
+    FileLink: "",
+    Comments: "",
+  };
   //   status variable
   const statusOption: IDropdownOption[] = [
     { key: "All", text: "All" },
     { key: "Pending", text: "Pending" },
-    { key: "InProgress", text: "InProgress" },
+    { key: "In Progress", text: "In Progress" },
     { key: "Completed", text: "Completed" },
   ];
   //   detail list  col variable
-  const columns: IColumn[] = [
+  const _columns: IColumn[] = [
     {
       key: "column1",
       name: "File name",
       fieldName: "Title",
       minWidth: 200,
       maxWidth: 350,
-      //   onColumnClick: this._onColumnClick,
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
+      },
       onRender: (item) => {
         return (
           <a
@@ -83,13 +120,15 @@ function Dashboard(props: any) {
       name: "Status",
       fieldName: "Status",
       minWidth: 80,
-      maxWidth: 180,
-      //   onColumnClick: this._onColumnClick,
+      maxWidth: 130,
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
+      },
       onRender: (item) => (
         <>
           {item.Status == "Pending" ? (
             <div className={statusDesign.Pending}>{item.Status}</div>
-          ) : item.Status == "InProgress" ? (
+          ) : item.Status == "In Progress" ? (
             <div className={statusDesign.InProgress}>{item.Status}</div>
           ) : item.Status == "Completed" ? (
             <div className={statusDesign.Completed}>{item.Status}</div>
@@ -105,7 +144,9 @@ function Dashboard(props: any) {
       fieldName: "Approvers",
       minWidth: 150,
       maxWidth: 200,
-      //   onColumnClick: this._onColumnClick,
+      // onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+      //   _onColumnClick(ev, column);
+      // },
       onRender: (data: any) => {
         return (
           data.Approvers.length > 0 && (
@@ -209,109 +250,19 @@ function Dashboard(props: any) {
       fieldName: "created",
       minWidth: 150,
       maxWidth: 200,
-      //   onColumnClick: this._onColumnClick,
-    },
-
-    {
-      key: "column5",
-      name: "Not Acknowledged by",
-      fieldName: "PendingMembers",
-      minWidth: 150,
-      maxWidth: 200,
-      //   onColumnClick: this._onColumnClick,
-      onRender: (data: any) => {
-        return (
-          data.PendingMembers.length > 0 && (
-            <>
-              {
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    cursor: "pointer",
-                  }}
-                >
-                  {data.PendingMembers.map((app, index) => {
-                    if (index < 3) {
-                      return (
-                        <div title={data.PendingMembers[index].text}>
-                          <Persona
-                            styles={{
-                              root: {
-                                display: "inline",
-                              },
-                            }}
-                            showOverflowTooltip
-                            size={PersonaSize.size24}
-                            presence={PersonaPresence.none}
-                            showInitialsUntilImageLoads={true}
-                            imageUrl={
-                              "/_layouts/15/userphoto.aspx?size=S&username=" +
-                              `${data.PendingMembers[index].secondaryText}`
-                            }
-                          />
-                        </div>
-                      );
-                    }
-                  })}
-
-                  {data.PendingMembers.length > 3 ? (
-                    <div>
-                      <TooltipHost
-                        content={
-                          <ul style={{ margin: 10, padding: 0 }}>
-                            {data.PendingMembers.map((DName) => {
-                              return (
-                                <li style={{ listStyleType: "none" }}>
-                                  <div style={{ display: "flex" }}>
-                                    <Persona
-                                      showOverflowTooltip
-                                      size={PersonaSize.size24}
-                                      presence={PersonaPresence.none}
-                                      showInitialsUntilImageLoads={true}
-                                      imageUrl={
-                                        "/_layouts/15/userphoto.aspx?size=S&username=" +
-                                        `${DName.secondaryText}`
-                                      }
-                                    />
-                                    <Label style={{ marginLeft: 10 }}>
-                                      {DName.text}
-                                    </Label>
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        }
-                        delay={TooltipDelay.zero}
-                        // id={item.ID}
-                        directionalHint={DirectionalHint.bottomCenter}
-                        styles={{ root: { display: "inline-block" } }}
-                      >
-                        <div
-                          className={styles.extraPeople}
-                          // aria-describedby={item.ID}
-                        >
-                          {data.PendingMembers.length}
-                        </div>
-                      </TooltipHost>
-                    </div>
-                  ) : null}
-                </div>
-              }
-            </>
-          )
-        );
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
       },
     },
     {
-      key: "column6",
-      name: "Acknowledged by",
+      key: "column5",
+      name: "Acknowledged",
       fieldName: "ApprovedMembers",
       minWidth: 150,
       maxWidth: 200,
-      //   onColumnClick: this._onColumnClick,
+      // onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+      //   _onColumnClick(ev, column);
+      // },
       onRender: (data: any) => {
         return (
           data.ApprovedMembers.length > 0 && (
@@ -399,6 +350,102 @@ function Dashboard(props: any) {
       },
     },
     {
+      key: "column6",
+      name: "Not Acknowledged",
+      fieldName: "PendingMembers",
+      minWidth: 150,
+      maxWidth: 200,
+      // onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+      //   _onColumnClick(ev, column);
+      // },
+      onRender: (data: any) => {
+        return (
+          data.PendingMembers.length > 0 && (
+            <>
+              {
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    cursor: "pointer",
+                  }}
+                >
+                  {data.PendingMembers.map((app, index) => {
+                    if (index < 3) {
+                      return (
+                        <div title={data.PendingMembers[index].text}>
+                          <Persona
+                            styles={{
+                              root: {
+                                display: "inline",
+                              },
+                            }}
+                            showOverflowTooltip
+                            size={PersonaSize.size24}
+                            presence={PersonaPresence.none}
+                            showInitialsUntilImageLoads={true}
+                            imageUrl={
+                              "/_layouts/15/userphoto.aspx?size=S&username=" +
+                              `${data.PendingMembers[index].secondaryText}`
+                            }
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+
+                  {data.PendingMembers.length > 3 ? (
+                    <div>
+                      <TooltipHost
+                        content={
+                          <ul style={{ margin: 10, padding: 0 }}>
+                            {data.PendingMembers.map((DName) => {
+                              return (
+                                <li style={{ listStyleType: "none" }}>
+                                  <div style={{ display: "flex" }}>
+                                    <Persona
+                                      showOverflowTooltip
+                                      size={PersonaSize.size24}
+                                      presence={PersonaPresence.none}
+                                      showInitialsUntilImageLoads={true}
+                                      imageUrl={
+                                        "/_layouts/15/userphoto.aspx?size=S&username=" +
+                                        `${DName.secondaryText}`
+                                      }
+                                    />
+                                    <Label style={{ marginLeft: 10 }}>
+                                      {DName.text}
+                                    </Label>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        }
+                        delay={TooltipDelay.zero}
+                        // id={item.ID}
+                        directionalHint={DirectionalHint.bottomCenter}
+                        styles={{ root: { display: "inline-block" } }}
+                      >
+                        <div
+                          className={styles.extraPeople}
+                          // aria-describedby={item.ID}
+                        >
+                          {data.PendingMembers.length}
+                        </div>
+                      </TooltipHost>
+                    </div>
+                  ) : null}
+                </div>
+              }
+            </>
+          )
+        );
+      },
+    },
+
+    {
       key: "column7",
       name: "Action",
       minWidth: 70,
@@ -411,8 +458,7 @@ function Dashboard(props: any) {
             iconProps={editIcon}
             style={{ color: "#ff7e00" }}
             onClick={() => {
-              console.log(item);
-
+              // console.log(item);
               let getDataObj = {
                 type: "edit",
                 Id: item.ID,
@@ -421,50 +467,29 @@ function Dashboard(props: any) {
                 File: {},
                 FileName: item.Title,
                 Valid: "",
+                FileLink: item.Link,
+                Comments: item.Comments,
               };
               setValueObj(getDataObj);
               setHideModal(true);
             }}
           />
-          {/* <IconButton iconProps={deleteIcon} /> */}
+          <IconButton
+            iconProps={deleteIcon}
+            onClick={() => {
+              deleteFunction(item.ID);
+            }}
+          />
         </div>
       ),
     },
   ];
-  //  peoplepicker variable
-  const GetUserDetails = (filterText: any) => {
-    var result = allPeoples.filter(
-      (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
-    );
-
-    return result.filter((item) =>
-      doesTextStartWith(item.text as string, filterText)
-    );
-  };
-  const doesTextStartWith = (text: string, filterText: string) => {
-    return text.toLowerCase().indexOf(filterText.toLowerCase()) === 0;
-  };
-
-  let filterKeys = {
-    Title: "",
-    Status: "All",
-    Approvers: "",
-  };
-
-  let getDataObj = {
-    type: "new",
-    Id: 0,
-    Title: "",
-    Mail: [],
-    // File: {},
-    File: undefined,
-    FileName: "",
-    Valid: "",
-  };
-
   // style variables
   // icon variables
-  const editIcon = { iconName: "edit" };
+  const editIcon = { iconName: "View" };
+  const resetIcon = { iconName: "Refresh" };
+  const deleteIcon = { iconName: "Delete" };
+
   const searchStyle = {
     root: {
       width: "200px",
@@ -538,19 +563,34 @@ function Dashboard(props: any) {
       },
     ],
   });
-  const newmodalDesign = {
+  const newmodalDesign: Partial<IModalStyles> = {
     main: {
-      width: 450,
-      height: 320,
+      width: 505,
+      height: 470,
     },
   };
-  const editmodalDesign = {
+  const editmodalDesign: Partial<IModalStyles> = {
     main: {
-      width: 450,
-      height: 360,
+      width: 505,
+      height: 460,
     },
   };
-  const textFieldDesign = {
+  const textFieldstyle = {
+    root: {
+      width: "90%",
+      margin: "0 13px",
+    },
+    fieldGroup: {
+      height: 40,
+      // borderRadius: 5,
+      backgroundColor: "#f5f8fa !important",
+      border: "1px solid #cbd6e2 !important",
+      "&::after": {
+        border: "1px solid rgb(111 165 224) !important",
+      },
+    },
+  };
+  const multiLinetextFieldstyle = {
     root: {
       width: "90%",
       margin: "0 13px",
@@ -566,7 +606,7 @@ function Dashboard(props: any) {
   const peoplePickerStyle = {
     root: {
       background: "#f5f8fa",
-      width: 293,
+      width: 319,
       margin: "0 10px",
       ".ms-BasePicker-text": {
         maxHeight: "100px",
@@ -586,74 +626,100 @@ function Dashboard(props: any) {
   const [displayData, setdisplayData] = useState([]);
   const [valueObj, setValueObj] = useState(getDataObj);
   const [showModal, setHideModal] = useState(false);
+  const [columns, setColumns] = useState(_columns);
+  const [paginatedData, setPaginatedData] = useState([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // const [popup, setPopup] = useState({
+  //   condition: false,
+  //   reponseData: getDataObj,
+  // });
 
   // function
   // get Document from Library
   function getDatafromLibrary() {
-    // console.log(allPeoples);
     const getDataArray: IItems[] = [];
     sp.web
       .getFolderByServerRelativePath("/sites/HRDev/Shared Documents")
       .files.expand("ListItemAllFields")
+
+      .top(5000)
       .get()
       .then((value: any) => {
-        value.forEach((data) => {
-          // console.log(data);
-          // date formatter
-          let getDate = data.TimeCreated.substring(0, 10);
-          const [year, month, date] = getDate.split("-");
-          var dateFormat = [date, month, year].join("/");
+        let pendingMembers = [];
+        let approvedMembers = [];
+        let approvers = [];
 
-          //pendingMembers
-          let pendingMembers = [];
-          data.ListItemAllFields["PendingApproversId"] &&
-            data.ListItemAllFields["PendingApproversId"].forEach((val) => {
-              let tempArr = [];
-              tempArr = allPeoples.filter((arr) => {
-                return arr.ID == val;
+        value
+          .filter((_value) => _value.ListItemAllFields.IsDelete != true)
+          .forEach((data) => {
+            // console.log(data);
+            // date formatter
+            let getDate = data.TimeCreated.substring(0, 10);
+            const [year, month, date] = getDate.split("-");
+            var dateFormat = [date, month, year].join("/");
+
+            //pendingMembers
+            pendingMembers = [];
+            data.ListItemAllFields["NotAcknowledgedEmails"] &&
+              data.ListItemAllFields["NotAcknowledgedEmails"]
+                .split(";")
+                .forEach((val) => {
+                  let tempArr = [];
+                  tempArr = allPeoples.filter((arr) => {
+                    return arr.secondaryText == val && val;
+                  });
+                  if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
+                });
+
+            //approvedMembers
+            approvedMembers = [];
+            data.ListItemAllFields["AcknowledgedEmails"] &&
+              data.ListItemAllFields["AcknowledgedEmails"]
+                .split(";")
+                .forEach((val) => {
+                  let tempArr = [];
+                  tempArr = allPeoples.filter((arr) => {
+                    return arr.secondaryText == val && val;
+                  });
+                  if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
+                });
+
+            //approvers
+            approvers = [];
+            data.ListItemAllFields["SignatoriesId"] &&
+              data.ListItemAllFields["SignatoriesId"].forEach((val) => {
+                let tempArr = [];
+                tempArr = allPeoples.filter((arr) => {
+                  return arr.ID == val;
+                });
+                if (tempArr.length > 0) approvers.push(tempArr[0]);
               });
-              if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
-            });
 
-          //approvedMembers
-          let approvedMembers = [];
-          data.ListItemAllFields["ApprovedApproversId"] &&
-            data.ListItemAllFields["ApprovedApproversId"].forEach((val) => {
-              let tempArr = [];
-              tempArr = allPeoples.filter((arr) => {
-                return arr.ID == val;
-              });
-              if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
+            getDataArray.push({
+              ID: data.ListItemAllFields["Id"],
+              Title: data.Name,
+              Status: data.ListItemAllFields["Status"],
+              PendingMembers: pendingMembers,
+              ApprovedMembers: approvedMembers,
+              Approvers: approvers,
+              Link: data.ServerRelativeUrl,
+              created: dateFormat,
+              PendingMembersID: data.ListItemAllFields["PendingApproversId"],
+              approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
+              approversID: data.ListItemAllFields["ApproversId"],
+              DocTitle: data.ListItemAllFields["DocTitle"],
+              Comments: data.ListItemAllFields["Comments"],
+              FileName: data.ListItemAllFields["FileName"],
             });
-
-          //approvers
-          let approvers = [];
-          data.ListItemAllFields["ApproversId"] &&
-            data.ListItemAllFields["ApproversId"].forEach((val) => {
-              let tempArr = [];
-              tempArr = allPeoples.filter((arr) => {
-                return arr.ID == val;
-              });
-              if (tempArr.length > 0) approvers.push(tempArr[0]);
-            });
-
-          getDataArray.push({
-            ID: data.ListItemAllFields["Id"],
-            Title: data.Name.split(".")[0],
-            Status: data.ListItemAllFields["Status"],
-            PendingMembers: pendingMembers,
-            ApprovedMembers: approvedMembers,
-            Approvers: approvers,
-            Link: data.ServerRelativeUrl,
-            created: dateFormat,
-            PendingMembersID: data.ListItemAllFields["PendingApproversId"],
-            approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
-            approversID: data.ListItemAllFields["ApproversId"],
-            DocTitle: data.ListItemAllFields["UserTitle"],
           });
-        });
+        sortData = [...getDataArray];
         setMasterData(getDataArray);
         setdisplayData(getDataArray);
+        paginateFunction(1, getDataArray);
+      })
+      .catch((error) => {
+        err("getDatafromLibrary", error);
       });
   }
 
@@ -681,6 +747,7 @@ function Dashboard(props: any) {
     }
     setdisplayData([...tempArr]);
     setFilterKeys({ ...tempFilter });
+    paginateFunction(1, tempArr);
   }
 
   // modal Onchangehandler
@@ -694,7 +761,6 @@ function Dashboard(props: any) {
   function validation() {
     let checkObj = valueObj;
     let isError = false;
-    // console.log(checkObj);
     if (!checkObj.Title) {
       isError = true;
       checkObj.Valid = "Please Enter Title";
@@ -705,35 +771,50 @@ function Dashboard(props: any) {
       isError = true;
       checkObj.Valid = "Please Select Signatories";
     }
-    if (!isError) {
-      setHideModal(false);
-    }
     setValueObj({ ...checkObj });
-    addFile();
+    if (isError == false) {
+      addFile(checkObj);
+    }
   }
+
   // add file
-  function addFile() {
-    let updateData = valueObj;
-    let fileName = updateData.File["name"];
+  function addFile(_valueObj) {
+    let updateData = _valueObj;
+    let fileNameFilter = masterData.filter((val) => {
+      return val.FileName == updateData.File["name"];
+    });
+    let fileNameArr = updateData.File["name"].split(".");
+    fileNameArr[0] = fileNameArr[0] + "v" + (fileNameFilter.length + 1);
+    let fileName = fileNameArr.join(".");
+
     let approvers = [];
     updateData.Mail.forEach((people) => {
       approvers.push(people.ID);
     });
+    let pendingApprovers = "";
+    updateData.Mail.forEach((people) => {
+      pendingApprovers += people.secondaryText + ";";
+    });
     sp.web
       .getFolderByServerRelativePath("/sites/HRDev/Shared Documents")
-      .files.add(fileName, updateData.File, true)
+      .files.add(fileName, updateData.File, false)
       .then((data) => {
         data.file.getItem().then((item) => {
           item
             .update({
-              UserTitle: updateData.Title,
-              ApproversId: {
+              DocTitle: updateData.Title,
+              Comments: updateData.Comments,
+              FileName: updateData.File["name"],
+              SignatoriesId: {
                 results: approvers,
               },
+              NotAcknowledgedEmails: pendingApprovers,
               Status: "Pending",
             })
             .then((result) => {
-              console.log(result);
+              // console.log(result);
+              setValueObj(getDataObj);
+              setHideModal(false);
               getDatafromLibrary();
             })
             .catch((error) => {
@@ -741,9 +822,104 @@ function Dashboard(props: any) {
             });
         });
       })
-      .catch(function (error) {
-        console.log(error);
+      .catch((error) => {
+        err("addFile", error);
       });
+  }
+
+  // delete function
+  function deleteFunction(val) {
+    sp.web.lists
+      .getByTitle("Documents")
+      .items.getById(val)
+      .update({ IsDelete: true })
+      .then(() => {
+        getDatafromLibrary();
+      });
+  }
+
+  // sorting data
+  const _onColumnClick = (
+    ev: React.MouseEvent<HTMLElement>,
+    column: IColumn
+  ): void => {
+    const tempCol = _columns;
+    const newCol: IColumn[] = tempCol.slice();
+    const currCol: IColumn = newCol.filter(
+      (curCol) => column.key === curCol.key
+    )[0];
+    newCol.forEach((newColumns: IColumn) => {
+      if (newColumns === currCol) {
+        currCol.isSortedDescending = !currCol.isSortedDescending;
+        currCol.isSorted = true;
+      } else {
+        newColumns.isSorted = false;
+        newColumns.isSortedDescending = true;
+      }
+    });
+
+    const newData = copyAndSort(
+      sortData,
+      currCol.fieldName!,
+      currCol.isSortedDescending
+    );
+    setdisplayData([...newData]);
+
+    paginateFunction(currentPage, newData);
+  };
+
+  function copyAndSort<T>(
+    items: T[],
+    columnKey: string,
+    isSortedDescending?: boolean
+  ): T[] {
+    let key = columnKey as keyof T;
+    return items
+      .slice(0)
+      .sort((a: T, b: T) =>
+        (isSortedDescending ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1
+      );
+  }
+
+  //  peoplepicker variable
+  const GetUserDetails = (filterText: any) => {
+    var result = allPeoples.filter(
+      (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
+    );
+
+    return result.filter((item) =>
+      doesTextStartWith(item.text as string, filterText)
+    );
+  };
+  const doesTextStartWith = (text: string, filterText: string) => {
+    return text.toLowerCase().indexOf(filterText.toLowerCase()) === 0;
+  };
+
+  // reset function
+  function reset() {
+    setdisplayData(masterData);
+    setFilterKeys(filterKeys);
+    setColumns(_columns);
+    paginateFunction(1, masterData);
+  }
+
+  // Pagination function
+  const paginateFunction = (pagenumber: number, data: any[]) => {
+    if (data.length > 0) {
+      let lastIndex: number = pagenumber * totalPageItems;
+      let firstIndex: number = lastIndex - totalPageItems;
+      let paginatedItems = data.slice(firstIndex, lastIndex);
+      setPaginatedData(paginatedItems);
+      setCurrentPage(pagenumber);
+    } else {
+      setPaginatedData([]);
+      setCurrentPage(1);
+    }
+  };
+
+  // error handling
+  function err(msg: string, val: any): void {
+    console.log(msg, val);
   }
 
   // useEffect
@@ -786,13 +962,22 @@ function Dashboard(props: any) {
                 />
               </div>
               <div>
-                <Label>Approvers</Label>
+                <Label>Signatories</Label>
                 <SearchBox
                   placeholder="search"
                   styles={searchStyle}
                   value={FilterKeys.Approvers}
                   onChange={(e, text) => {
                     filterFunction("Approvers", text);
+                  }}
+                />
+              </div>
+              <div>
+                <IconButton
+                  iconProps={resetIcon}
+                  className={styles.iconBtn}
+                  onClick={() => {
+                    reset();
                   }}
                 />
               </div>
@@ -820,10 +1005,28 @@ function Dashboard(props: any) {
           {/* details list */}
           <DetailsList
             columns={columns}
-            items={displayData}
+            items={paginatedData}
             styles={listStyles}
             selectionMode={SelectionMode.none}
           />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Pagination
+              currentPage={currentPage}
+              totalPages={
+                displayData.length > 0
+                  ? Math.ceil(displayData.length / totalPageItems)
+                  : 1
+              }
+              onChange={(page) => {
+                paginateFunction(page, displayData);
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -835,22 +1038,30 @@ function Dashboard(props: any) {
       >
         <div className={styles.modalCustomDesign}>
           <div className={styles.header}>
-            <h2>New</h2>
-            {/* <IconButton iconProps={{ iconName: "cancel" }}></IconButton> */}
+            {valueObj.type == "new" ? (
+              <h2>New Document</h2>
+            ) : (
+              <h2>View Document</h2>
+            )}
           </div>
 
           {/* details section */}
           {/* title */}
           <div
-            style={valueObj.type == "new" ? { height: 230 } : { height: 270 }}
+            style={valueObj.type == "new" ? { height: 350 } : { height: 334 }}
           >
-            <div className={styles.detailsSection}>
+            <div
+              className={styles.detailsSection}
+              style={{ alignItems: "center" }}
+            >
               <div>
-                <Label>Title</Label>
+                <Label>
+                  Title <span style={{ color: "red" }}>*</span>
+                </Label>
               </div>
               <div style={{ width: 0 }}>:</div>
               <TextField
-                styles={textFieldDesign}
+                styles={textFieldstyle}
                 value={valueObj.Title}
                 readOnly={valueObj.type == "edit"}
                 onChange={(name) => {
@@ -861,47 +1072,78 @@ function Dashboard(props: any) {
               ></TextField>
             </div>
             {/* file */}
-            <div className={styles.detailsSection}>
-              <div>
-                <Label>File</Label>
-              </div>
-              <div>:</div>
-              <div>
-                <input
-                  style={{ margin: "0 10px" }}
-                  className={styles.fileStyle}
-                  type="file"
-                  id="uploadFile"
-                  onChange={(file) => {
-                    valueObj.Valid = "";
-                    setValueObj(valueObj);
-                    Onchangehandler("File", file.target["files"][0]);
-                  }}
-                />
-              </div>
-            </div>
-            {valueObj.Id != 0 && (
-              <>
-                <div className={styles.detailsSection}>
-                  <Label></Label>
-                  <Label style={{ width: 310 }}>{valueObj.FileName}</Label>
-                </div>
-              </>
-            )}
-
-            {/* people picker */}
             <div
               className={styles.detailsSection}
-              style={{ alignItems: "flex-start" }}
+              style={{ alignItems: "center" }}
             >
               <div>
-                <Label>Signatories</Label>
+                <Label>
+                  File <span style={{ color: "red" }}>*</span>
+                </Label>
+              </div>
+              <div>:</div>
+              {valueObj.type == "new" ? (
+                <>
+                  <div>
+                    <input
+                      style={{ margin: "0 10px" }}
+                      className={styles.fileStyle}
+                      type="file"
+                      id="uploadFile"
+                      // disabled={valueObj.type == "edit"}
+                      onChange={(file) => {
+                        valueObj.Valid = "";
+                        setValueObj(valueObj);
+                        Onchangehandler("File", file.target["files"][0]);
+                      }}
+                    />
+                  </div>
+                </>
+              ) : null}
+              {valueObj.Id != 0 && (
+                <>
+                  <div style={{ width: 290, margin: "0 10px" }}>
+                    {/* <Label style={{ width: 105 }}></Label> */}
+                    <a
+                      target="_blank"
+                      data-interception="off"
+                      href={valueObj.FileLink}
+                    >
+                      {valueObj.FileName}
+                    </a>
+                  </div>
+                </>
+              )}
+            </div>
+            {/* {valueObj.Id != 0 && (
+              <>
+                <div className={styles.detailsSection}>
+                  <Label style={{ width: 105 }}></Label>
+                  <a
+                    style={{ width: 290 }}
+                    target="_blank"
+                    data-interception="off"
+                    href={valueObj.FileLink}
+                  >
+                    {valueObj.FileName}
+                  </a>
+                </div>
+              </>
+            )} */}
+
+            {/* people picker */}
+            <div className={styles.detailsSection}>
+              <div>
+                <Label>
+                  Signatories <span style={{ color: "red" }}>*</span>
+                </Label>
               </div>
               <div>:</div>
               <NormalPeoplePicker
                 styles={peoplePickerStyle}
                 onResolveSuggestions={GetUserDetails}
                 itemLimit={10}
+                disabled={valueObj.type == "edit"}
                 selectedItems={valueObj.Mail}
                 onChange={(selectedUser) => {
                   valueObj.Valid = "";
@@ -909,6 +1151,26 @@ function Dashboard(props: any) {
                   Onchangehandler("Mail", selectedUser);
                 }}
               />
+            </div>
+
+            {/* comments section */}
+            <div className={styles.detailsSection}>
+              <div>
+                <Label>Comments</Label>
+              </div>
+              <div style={{ width: 0 }}>:</div>
+              <TextField
+                styles={multiLinetextFieldstyle}
+                style={{ resize: "none" }}
+                value={valueObj.Comments}
+                multiline
+                disabled={valueObj.type == "edit"}
+                onChange={(name) => {
+                  // valueObj.Valid = "";
+                  // setValueObj(valueObj);
+                  Onchangehandler("Comments", name.target["value"]);
+                }}
+              ></TextField>
             </div>
           </div>
 
@@ -924,21 +1186,30 @@ function Dashboard(props: any) {
 
             <PrimaryButton
               className={styles.cancelBtn}
+              style={
+                valueObj.type == "new"
+                  ? { marginRight: 15 }
+                  : { marginRight: 0 }
+              }
               text="Cancel"
               onClick={() => {
                 setValueObj(getDataObj);
                 setHideModal(false);
               }}
             />
-            <PrimaryButton
-              className={styles.submitBtn}
-              text="Submit"
-              color="primary"
-              onClick={() => {
-                validation();
-                // addFile();
-              }}
-            />
+            {valueObj.type == "new" ? (
+              <>
+                <PrimaryButton
+                  className={styles.submitBtn}
+                  text="Submit"
+                  color="primary"
+                  onClick={() => {
+                    validation();
+                    // addFile();
+                  }}
+                />
+              </>
+            ) : null}
           </div>
         </div>
       </Modal>
