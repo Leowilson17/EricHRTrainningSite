@@ -20,7 +20,8 @@
         "office-ui-fabric-react": "7.174.1",
         "react": "16.13.1",
         "react-dom": "16.13.1",
-        "spfx-fast-serve": "^3.0.6"
+        "spfx-fast-serve": "^3.0.6",
+        "moment": "^2.29.3"
     },
     "devDependencies": {
         "@types/react": "16.9.51",
