@@ -25,6 +25,11 @@ import {
   IModalStyles,
   NormalPeoplePicker,
   TextField,
+  Spinner,
+  ISpinnerStyles,
+  DatePicker,
+  IDatePickerStyles,
+  IIconStyles,
 } from "@fluentui/react";
 import { sp } from "@pnp/sp/presets/all";
 import { useState } from "react";
@@ -46,7 +51,9 @@ interface IItems {
   DocTitle: string;
   Comments: string;
   FileName: string;
+  IsDeleted: boolean;
 }
+import * as moment from "moment";
 
 // interface ITest {
 //   name: string;
@@ -72,6 +79,7 @@ function Dashboard(props: any) {
     Title: "",
     Status: "All",
     Approvers: "",
+    submittedDate: null,
   };
   let getDataObj = {
     type: "new",
@@ -120,7 +128,7 @@ function Dashboard(props: any) {
       name: "Status",
       fieldName: "Status",
       minWidth: 80,
-      maxWidth: 130,
+      maxWidth: 90,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
@@ -253,6 +261,11 @@ function Dashboard(props: any) {
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
+      onRender: (data: any) => (
+        <div style={{ fontSize: 13, color: "#000" }}>
+          {moment(data.created).format("DD/MM/YYYY")}
+        </div>
+      ),
     },
     {
       key: "column5",
@@ -444,7 +457,6 @@ function Dashboard(props: any) {
         );
       },
     },
-
     {
       key: "column7",
       name: "Action",
@@ -456,7 +468,8 @@ function Dashboard(props: any) {
           <IconButton
             id={item.ID}
             iconProps={editIcon}
-            style={{ color: "#ff7e00" }}
+            style={{ color: "#36b04b", padding: 0 }}
+            styles={IconBtnStyle}
             onClick={() => {
               // console.log(item);
               let getDataObj = {
@@ -476,8 +489,10 @@ function Dashboard(props: any) {
           />
           <IconButton
             iconProps={deleteIcon}
+            style={{ color: "#b80000" }}
+            styles={IconBtnStyle}
             onClick={() => {
-              deleteFunction(item.ID);
+              setHideDelModal({ condition: true, targetID: item.ID });
             }}
           />
         </div>
@@ -517,8 +532,8 @@ function Dashboard(props: any) {
         ".ms-DetailsHeader-cell": {
           // color: "#ff7e00",
           // backgroundColor: "#ff7e0045",
-          color: "#63666a!important",
-          backgroundColor: "#f7f9fa!important",
+          color: "#fff !important",
+          backgroundColor: "#ff7e00 !important",
           // "&:hover": {
           //   color: "#ff7e00",
           //   background: "#ff7e0045 !important",
@@ -566,13 +581,32 @@ function Dashboard(props: any) {
   const newmodalDesign: Partial<IModalStyles> = {
     main: {
       width: 505,
-      height: 470,
+      height: 418,
     },
   };
   const editmodalDesign: Partial<IModalStyles> = {
     main: {
       width: 505,
-      height: 460,
+      height: 376,
+    },
+  };
+  const deleteModalStyle: Partial<IModalStyles> = {
+    main: {
+      width: 390,
+      height: 165,
+      borderRadius: 5,
+    },
+  };
+  const datePickerStyle: Partial<IDatePickerStyles> = {
+    root: {
+      width: 200,
+      marginRight: 20,
+    },
+  };
+  const spinnerStyle: Partial<ISpinnerStyles> = {
+    circle: {
+      borderWidth: 2.5,
+      borderColor: "#fff #ababab #ababab",
     },
   };
   const textFieldstyle = {
@@ -612,23 +646,38 @@ function Dashboard(props: any) {
         maxHeight: "100px",
         overflowX: "hidden",
         padding: "3px 5px",
-        border: "1px solid rgb(91 144 214)",
+        // border: "1px solid rgb(91 144 214)",
+        border: "1px solid #000",
         "::after": {
           border: "none",
         },
       },
     },
   };
+  const IconBtnStyle: Partial<IIconStyles> = {
+    root: {
+      span: {
+        justifyContent: "flex-start !important",
+      },
+    },
+  };
 
   // State variable
+  const [nofillterData, setnofillterData] = useState<IItems[]>([]);
   const [masterData, setMasterData] = useState<IItems[]>([]);
   const [FilterKeys, setFilterKeys] = useState(filterKeys);
   const [displayData, setdisplayData] = useState([]);
   const [valueObj, setValueObj] = useState(getDataObj);
   const [showModal, setHideModal] = useState(false);
+  const [showDelModal, setHideDelModal] = useState({
+    condition: false,
+    targetID: null,
+  });
   const [columns, setColumns] = useState(_columns);
   const [paginatedData, setPaginatedData] = useState([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [onSubmitLoader, setOnSubmitLoader] = useState<boolean>(false);
+  const [tableLoader, settableLoader] = useState<boolean>(false);
 
   // const [popup, setPopup] = useState({
   //   condition: false,
@@ -638,85 +687,85 @@ function Dashboard(props: any) {
   // function
   // get Document from Library
   function getDatafromLibrary() {
+    // settableLoader(true);
     const getDataArray: IItems[] = [];
     sp.web
       .getFolderByServerRelativePath("/sites/HRDev/Shared Documents")
       .files.expand("ListItemAllFields")
-
       .top(5000)
+      .orderBy("TimeLastModified", false)
       .get()
       .then((value: any) => {
         let pendingMembers = [];
         let approvedMembers = [];
         let approvers = [];
 
-        value
-          .filter((_value) => _value.ListItemAllFields.IsDelete != true)
-          .forEach((data) => {
-            // console.log(data);
-            // date formatter
-            let getDate = data.TimeCreated.substring(0, 10);
-            const [year, month, date] = getDate.split("-");
-            var dateFormat = [date, month, year].join("/");
-
-            //pendingMembers
-            pendingMembers = [];
-            data.ListItemAllFields["NotAcknowledgedEmails"] &&
-              data.ListItemAllFields["NotAcknowledgedEmails"]
-                .split(";")
-                .forEach((val) => {
-                  let tempArr = [];
-                  tempArr = allPeoples.filter((arr) => {
-                    return arr.secondaryText == val && val;
-                  });
-                  if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
-                });
-
-            //approvedMembers
-            approvedMembers = [];
-            data.ListItemAllFields["AcknowledgedEmails"] &&
-              data.ListItemAllFields["AcknowledgedEmails"]
-                .split(";")
-                .forEach((val) => {
-                  let tempArr = [];
-                  tempArr = allPeoples.filter((arr) => {
-                    return arr.secondaryText == val && val;
-                  });
-                  if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
-                });
-
-            //approvers
-            approvers = [];
-            data.ListItemAllFields["SignatoriesId"] &&
-              data.ListItemAllFields["SignatoriesId"].forEach((val) => {
+        value.forEach((data) => {
+          // console.log(data);
+          //pendingMembers
+          pendingMembers = [];
+          data.ListItemAllFields["NotAcknowledgedEmails"] &&
+            data.ListItemAllFields["NotAcknowledgedEmails"]
+              .split(";")
+              .forEach((val) => {
                 let tempArr = [];
                 tempArr = allPeoples.filter((arr) => {
-                  return arr.ID == val;
+                  return arr.secondaryText == val && val;
                 });
-                if (tempArr.length > 0) approvers.push(tempArr[0]);
+                if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
               });
 
-            getDataArray.push({
-              ID: data.ListItemAllFields["Id"],
-              Title: data.Name,
-              Status: data.ListItemAllFields["Status"],
-              PendingMembers: pendingMembers,
-              ApprovedMembers: approvedMembers,
-              Approvers: approvers,
-              Link: data.ServerRelativeUrl,
-              created: dateFormat,
-              PendingMembersID: data.ListItemAllFields["PendingApproversId"],
-              approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
-              approversID: data.ListItemAllFields["ApproversId"],
-              DocTitle: data.ListItemAllFields["DocTitle"],
-              Comments: data.ListItemAllFields["Comments"],
-              FileName: data.ListItemAllFields["FileName"],
+          //approvedMembers
+          approvedMembers = [];
+          data.ListItemAllFields["AcknowledgedEmails"] &&
+            data.ListItemAllFields["AcknowledgedEmails"]
+              .split(";")
+              .forEach((val) => {
+                let tempArr = [];
+                tempArr = allPeoples.filter((arr) => {
+                  return arr.secondaryText == val && val;
+                });
+                if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
+              });
+
+          //approvers
+          approvers = [];
+          data.ListItemAllFields["SignatoriesId"] &&
+            data.ListItemAllFields["SignatoriesId"].forEach((val) => {
+              let tempArr = [];
+              tempArr = allPeoples.filter((arr) => {
+                return arr.ID == val;
+              });
+              if (tempArr.length > 0) approvers.push(tempArr[0]);
             });
+
+          getDataArray.push({
+            ID: data.ListItemAllFields["Id"],
+            Title: data.Name,
+            Status: data.ListItemAllFields["Status"],
+            PendingMembers: pendingMembers,
+            ApprovedMembers: approvedMembers,
+            Approvers: approvers,
+            Link: data.ServerRelativeUrl,
+            created: data.TimeCreated,
+            PendingMembersID: data.ListItemAllFields["PendingApproversId"],
+            approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
+            approversID: data.ListItemAllFields["ApproversId"],
+            DocTitle: data.ListItemAllFields["DocTitle"],
+            Comments: data.ListItemAllFields["Comments"],
+            FileName: data.ListItemAllFields["FileName"],
+            IsDeleted: data.ListItemAllFields["IsDelete"] ? true : false,
           });
-        sortData = [...getDataArray];
-        setMasterData(getDataArray);
-        setdisplayData(getDataArray);
-        paginateFunction(1, getDataArray);
+        });
+        let filteredData = getDataArray.filter(
+          (_value) => _value.IsDeleted != true
+        );
+        sortData = [...filteredData];
+        setnofillterData(getDataArray);
+        setMasterData(filteredData);
+        setdisplayData(filteredData);
+        paginateFunction(1, filteredData);
+        settableLoader(false);
       })
       .catch((error) => {
         err("getDatafromLibrary", error);
@@ -742,6 +791,15 @@ function Dashboard(props: any) {
       tempArr = tempArr.filter((arr) => {
         return arr.Approvers.some((app) =>
           app.text.toLowerCase().includes(tempFilter.Approvers.toLowerCase())
+        );
+      });
+    }
+
+    if (tempFilter.submittedDate != null) {
+      tempArr = tempArr.filter((arr) => {
+        return (
+          moment(arr.created).format("DD/MM/YYYY") ==
+          moment(tempFilter.submittedDate).format("DD/MM/YYYY")
         );
       });
     }
@@ -774,13 +832,15 @@ function Dashboard(props: any) {
     setValueObj({ ...checkObj });
     if (isError == false) {
       addFile(checkObj);
+    } else {
+      setOnSubmitLoader(false);
     }
   }
 
   // add file
   function addFile(_valueObj) {
     let updateData = _valueObj;
-    let fileNameFilter = masterData.filter((val) => {
+    let fileNameFilter = nofillterData.filter((val) => {
       return val.FileName == updateData.File["name"];
     });
     let fileNameArr = updateData.File["name"].split(".");
@@ -814,6 +874,7 @@ function Dashboard(props: any) {
             .then((result) => {
               // console.log(result);
               setValueObj(getDataObj);
+              setOnSubmitLoader(false);
               setHideModal(false);
               getDatafromLibrary();
             })
@@ -835,6 +896,8 @@ function Dashboard(props: any) {
       .update({ IsDelete: true })
       .then(() => {
         getDatafromLibrary();
+        setHideDelModal({ condition: false, targetID: null });
+        setOnSubmitLoader(false);
       });
   }
 
@@ -895,6 +958,10 @@ function Dashboard(props: any) {
     return text.toLowerCase().indexOf(filterText.toLowerCase()) === 0;
   };
 
+  const dateformater = (date: Date) => {
+    return date ? moment(date).format("DD/MM/YYYY") : "";
+  };
+
   // reset function
   function reset() {
     setdisplayData(masterData);
@@ -924,198 +991,227 @@ function Dashboard(props: any) {
 
   // useEffect
   React.useEffect(() => {
+    settableLoader(true);
     getDatafromLibrary();
   }, []);
 
   return (
-    <div>
-      <div className={styles.container}>
+    <>
+      {tableLoader ? (
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <Spinner />
+        </div>
+      ) : (
         <div>
-          {/* header section starts */}
-          <Label className={styles.header}>Dashboard</Label>
-          {/* header section ends */}
+          <div className={styles.container}>
+            <div>
+              {/* header section starts */}
+              <Label className={styles.header}>HR Documents</Label>
+              {/* header section ends */}
 
-          {/* filter section stars */}
-          <div className={styles.filterSection}>
-            <div className={styles.searchFlex}>
-              <div>
-                <Label>File Name</Label>
-                <SearchBox
-                  placeholder="search"
-                  styles={searchStyle}
-                  value={FilterKeys.Title}
-                  onChange={(e, text) => {
-                    filterFunction("Title", text);
-                  }}
-                />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Dropdown
-                  placeholder="All"
-                  options={statusOption}
-                  styles={dropdownStyles}
-                  selectedKey={FilterKeys.Status}
-                  onChange={(e, option) => {
-                    filterFunction("Status", option["text"]);
-                  }}
-                />
-              </div>
-              <div>
-                <Label>Signatories</Label>
-                <SearchBox
-                  placeholder="search"
-                  styles={searchStyle}
-                  value={FilterKeys.Approvers}
-                  onChange={(e, text) => {
-                    filterFunction("Approvers", text);
-                  }}
-                />
-              </div>
-              <div>
-                <IconButton
-                  iconProps={resetIcon}
-                  className={styles.iconBtn}
-                  onClick={() => {
-                    reset();
-                  }}
-                />
-              </div>
-            </div>
-            {/* filter section ends */}
-            {/* new button */}
-            {/* <TextField
+              {/* filter section stars */}
+              <div className={styles.filterSection}>
+                <div className={styles.searchFlex}>
+                  <div>
+                    <Label>File Name</Label>
+                    <SearchBox
+                      placeholder="search"
+                      styles={searchStyle}
+                      value={FilterKeys.Title}
+                      onChange={(e, text) => {
+                        filterFunction("Title", text);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <Dropdown
+                      placeholder="All"
+                      options={statusOption}
+                      styles={dropdownStyles}
+                      selectedKey={FilterKeys.Status}
+                      onChange={(e, option) => {
+                        filterFunction("Status", option["text"]);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Signatories</Label>
+                    <SearchBox
+                      placeholder="search"
+                      styles={searchStyle}
+                      value={FilterKeys.Approvers}
+                      onChange={(e, text) => {
+                        filterFunction("Approvers", text);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Submitted Date</Label>
+                    <DatePicker
+                      placeholder="Select a date..."
+                      styles={datePickerStyle}
+                      formatDate={dateformater}
+                      value={FilterKeys.submittedDate}
+                      onSelectDate={(date) => {
+                        filterFunction("submittedDate", date);
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginTop: 28 }}>
+                    <IconButton
+                      iconProps={resetIcon}
+                      style={{ color: "#000" }}
+                      className={styles.iconBtn}
+                      onClick={() => {
+                        reset();
+                      }}
+                    />
+                  </div>
+                </div>
+                {/* filter section ends */}
+                {/* new button */}
+                {/* <TextField
             type="file"
             onChange={(file) => {
               addFile(file);
             }}
           /> */}
-            <PrimaryButton
-              text="New"
-              className={styles.newBtn}
-              onClick={() => {
-                setHideModal(true);
-                valueObj.Id = 0;
-                valueObj.type = "new";
-              }}
-            />
-          </div>
-          {/* filter section ends */}
-
-          {/* details list */}
-          <DetailsList
-            columns={columns}
-            items={paginatedData}
-            styles={listStyles}
-            selectionMode={SelectionMode.none}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-            }}
-          >
-            <Pagination
-              currentPage={currentPage}
-              totalPages={
-                displayData.length > 0
-                  ? Math.ceil(displayData.length / totalPageItems)
-                  : 1
-              }
-              onChange={(page) => {
-                paginateFunction(page, displayData);
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* modal section */}
-      <Modal
-        styles={valueObj.type == "new" ? newmodalDesign : editmodalDesign}
-        isOpen={showModal}
-        // onDismiss={false}
-      >
-        <div className={styles.modalCustomDesign}>
-          <div className={styles.header}>
-            {valueObj.type == "new" ? (
-              <h2>New Document</h2>
-            ) : (
-              <h2>View Document</h2>
-            )}
-          </div>
-
-          {/* details section */}
-          {/* title */}
-          <div
-            style={valueObj.type == "new" ? { height: 350 } : { height: 334 }}
-          >
-            <div
-              className={styles.detailsSection}
-              style={{ alignItems: "center" }}
-            >
-              <div>
-                <Label>
-                  Title <span style={{ color: "red" }}>*</span>
-                </Label>
+                <PrimaryButton
+                  text="New"
+                  className={styles.newBtn}
+                  onClick={() => {
+                    setHideModal(true);
+                    valueObj.Id = 0;
+                    valueObj.type = "new";
+                  }}
+                />
               </div>
-              <div style={{ width: 0 }}>:</div>
-              <TextField
-                styles={textFieldstyle}
-                value={valueObj.Title}
-                readOnly={valueObj.type == "edit"}
-                onChange={(name) => {
-                  valueObj.Valid = "";
-                  setValueObj(valueObj);
-                  Onchangehandler("Title", name.target["value"]);
-                }}
-              ></TextField>
-            </div>
-            {/* file */}
-            <div
-              className={styles.detailsSection}
-              style={{ alignItems: "center" }}
-            >
-              <div>
-                <Label>
-                  File <span style={{ color: "red" }}>*</span>
-                </Label>
-              </div>
-              <div>:</div>
-              {valueObj.type == "new" ? (
+              {/* filter section ends */}
+
+              {/* details list */}
+              {displayData.length > 0 ? (
                 <>
-                  <div>
-                    <input
-                      style={{ margin: "0 10px" }}
-                      className={styles.fileStyle}
-                      type="file"
-                      id="uploadFile"
-                      // disabled={valueObj.type == "edit"}
-                      onChange={(file) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
-                        Onchangehandler("File", file.target["files"][0]);
+                  <DetailsList
+                    columns={columns}
+                    items={paginatedData}
+                    styles={listStyles}
+                    selectionMode={SelectionMode.none}
+                  />
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={
+                        displayData.length > 0
+                          ? Math.ceil(displayData.length / totalPageItems)
+                          : 1
+                      }
+                      onChange={(page) => {
+                        paginateFunction(page, displayData);
                       }}
                     />
                   </div>
                 </>
-              ) : null}
-              {valueObj.Id != 0 && (
-                <>
-                  <div style={{ width: 290, margin: "0 10px" }}>
-                    {/* <Label style={{ width: 105 }}></Label> */}
-                    <a
-                      target="_blank"
-                      data-interception="off"
-                      href={valueObj.FileLink}
-                    >
-                      {valueObj.FileName}
-                    </a>
-                  </div>
-                </>
+              ) : (
+                <div className={styles.noRecords}>
+                  <h4>No Records Found!!</h4>
+                </div>
               )}
             </div>
-            {/* {valueObj.Id != 0 && (
+          </div>
+
+          {/*  new and view modal section */}
+          <Modal
+            styles={valueObj.type == "new" ? newmodalDesign : editmodalDesign}
+            isOpen={showModal}
+          >
+            <div className={styles.modalCustomDesign}>
+              <div className={styles.header}>
+                {valueObj.type == "new" ? (
+                  <h2>New Document</h2>
+                ) : (
+                  <h2>View Document</h2>
+                )}
+              </div>
+
+              {/* details section */}
+              {/* title */}
+              <div
+                style={
+                  valueObj.type == "new" ? { height: 300 } : { height: 265 }
+                }
+              >
+                <div
+                  className={styles.detailsSection}
+                  style={{ alignItems: "center" }}
+                >
+                  <div>
+                    <Label>
+                      Title <span style={{ color: "red" }}>*</span>
+                    </Label>
+                  </div>
+                  <div style={{ width: 0 }}>:</div>
+                  <TextField
+                    styles={textFieldstyle}
+                    value={valueObj.Title}
+                    readOnly={valueObj.type == "edit"}
+                    onChange={(name) => {
+                      valueObj.Valid = "";
+                      setValueObj(valueObj);
+                      Onchangehandler("Title", name.target["value"]);
+                    }}
+                  ></TextField>
+                </div>
+                {/* file */}
+                <div
+                  className={styles.detailsSection}
+                  style={{ alignItems: "center" }}
+                >
+                  <div>
+                    <Label>
+                      File <span style={{ color: "red" }}>*</span>
+                    </Label>
+                  </div>
+                  <div>:</div>
+                  {valueObj.type == "new" ? (
+                    <>
+                      <div>
+                        <input
+                          style={{ margin: "0 10px" }}
+                          className={styles.fileStyle}
+                          type="file"
+                          id="uploadFile"
+                          // disabled={valueObj.type == "edit"}
+                          onChange={(file) => {
+                            valueObj.Valid = "";
+                            setValueObj(valueObj);
+                            Onchangehandler("File", file.target["files"][0]);
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : null}
+                  {valueObj.Id != 0 && (
+                    <>
+                      <div style={{ width: 290, margin: "0 10px" }}>
+                        {/* <Label style={{ width: 105 }}></Label> */}
+                        <a
+                          target="_blank"
+                          data-interception="off"
+                          href={valueObj.FileLink}
+                        >
+                          {valueObj.FileName}
+                        </a>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* {valueObj.Id != 0 && (
               <>
                 <div className={styles.detailsSection}>
                   <Label style={{ width: 105 }}></Label>
@@ -1131,89 +1227,146 @@ function Dashboard(props: any) {
               </>
             )} */}
 
-            {/* people picker */}
-            <div className={styles.detailsSection}>
-              <div>
-                <Label>
-                  Signatories <span style={{ color: "red" }}>*</span>
-                </Label>
-              </div>
-              <div>:</div>
-              <NormalPeoplePicker
-                styles={peoplePickerStyle}
-                onResolveSuggestions={GetUserDetails}
-                itemLimit={10}
-                disabled={valueObj.type == "edit"}
-                selectedItems={valueObj.Mail}
-                onChange={(selectedUser) => {
-                  valueObj.Valid = "";
-                  setValueObj(valueObj);
-                  Onchangehandler("Mail", selectedUser);
-                }}
-              />
-            </div>
+                {/* people picker */}
+                <div className={styles.detailsSection}>
+                  <div>
+                    <Label>
+                      Signatories <span style={{ color: "red" }}>*</span>
+                    </Label>
+                  </div>
+                  <div>:</div>
+                  <NormalPeoplePicker
+                    styles={peoplePickerStyle}
+                    onResolveSuggestions={GetUserDetails}
+                    itemLimit={10}
+                    disabled={valueObj.type == "edit"}
+                    selectedItems={valueObj.Mail}
+                    onChange={(selectedUser) => {
+                      valueObj.Valid = "";
+                      setValueObj(valueObj);
+                      Onchangehandler("Mail", selectedUser);
+                    }}
+                  />
+                </div>
 
-            {/* comments section */}
-            <div className={styles.detailsSection}>
-              <div>
-                <Label>Comments</Label>
+                {/* comments section */}
+                <div className={styles.detailsSection}>
+                  <div>
+                    <Label>Comments</Label>
+                  </div>
+                  <div style={{ width: 0 }}>:</div>
+                  <TextField
+                    styles={multiLinetextFieldstyle}
+                    style={{ resize: "none" }}
+                    value={valueObj.Comments}
+                    multiline
+                    disabled={valueObj.type == "edit"}
+                    onChange={(name) => {
+                      // valueObj.Valid = "";
+                      // setValueObj(valueObj);
+                      Onchangehandler("Comments", name.target["value"]);
+                    }}
+                  ></TextField>
+                </div>
               </div>
-              <div style={{ width: 0 }}>:</div>
-              <TextField
-                styles={multiLinetextFieldstyle}
-                style={{ resize: "none" }}
-                value={valueObj.Comments}
-                multiline
-                disabled={valueObj.type == "edit"}
-                onChange={(name) => {
-                  // valueObj.Valid = "";
-                  // setValueObj(valueObj);
-                  Onchangehandler("Comments", name.target["value"]);
-                }}
-              ></TextField>
-            </div>
-          </div>
 
-          {/* btn section */}
-          <div className={styles.btnSection}>
-            {valueObj.Valid && (
-              <div>
-                <Label style={{ color: "red", marginRight: 10 }}>
-                  {valueObj.Valid}
-                </Label>
-              </div>
-            )}
+              {/* btn section */}
+              <div className={styles.btnSection}>
+                {valueObj.Valid && (
+                  <div>
+                    <Label style={{ color: "red", marginRight: 10 }}>
+                      {valueObj.Valid}
+                    </Label>
+                  </div>
+                )}
 
-            <PrimaryButton
-              className={styles.cancelBtn}
-              style={
-                valueObj.type == "new"
-                  ? { marginRight: 15 }
-                  : { marginRight: 0 }
-              }
-              text="Cancel"
-              onClick={() => {
-                setValueObj(getDataObj);
-                setHideModal(false);
-              }}
-            />
-            {valueObj.type == "new" ? (
-              <>
                 <PrimaryButton
-                  className={styles.submitBtn}
-                  text="Submit"
-                  color="primary"
+                  className={styles.cancelBtn}
+                  style={
+                    valueObj.type == "new"
+                      ? { marginRight: 15 }
+                      : { marginRight: 0 }
+                  }
+                  text="Cancel"
                   onClick={() => {
-                    validation();
-                    // addFile();
+                    if (!onSubmitLoader) {
+                      setOnSubmitLoader(false);
+                      setValueObj(getDataObj);
+                      setHideModal(false);
+                    }
                   }}
                 />
-              </>
-            ) : null}
-          </div>
+                {valueObj.type == "new" ? (
+                  <>
+                    <PrimaryButton
+                      className={styles.submitBtn}
+                      color="primary"
+                      onClick={() => {
+                        if (!onSubmitLoader) {
+                          setOnSubmitLoader(true);
+                          validation();
+                          // addFile();
+                        }
+                      }}
+                    >
+                      {onSubmitLoader ? (
+                        <Spinner styles={spinnerStyle} />
+                      ) : (
+                        "Submit"
+                      )}
+                    </PrimaryButton>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </Modal>
+          {/* Delete Modal */}
+          <Modal isOpen={showDelModal.condition} styles={deleteModalStyle}>
+            <div className={styles.delModal}>
+              <h2 style={{ textAlign: "center", color: "#f68413" }}>Delete</h2>
+              <div>
+                {" "}
+                <h3 style={{ textAlign: "center" }}>
+                  Are you sure want to Delete?
+                </h3>
+              </div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <PrimaryButton
+                  style={{
+                    backgroundColor: "#000",
+                    color: "#fff",
+                    border: "none",
+                  }}
+                  onClick={() => {
+                    if (!onSubmitLoader) {
+                      setOnSubmitLoader(true);
+                      deleteFunction(showDelModal.targetID);
+                    }
+                  }}
+                >
+                  {onSubmitLoader ? <Spinner styles={spinnerStyle} /> : "Yes"}
+                </PrimaryButton>
+                <PrimaryButton
+                  style={{
+                    backgroundColor: "#6c757d",
+                    color: "#fff",
+                    border: "none",
+                  }}
+                  onClick={() => {
+                    if (!onSubmitLoader) {
+                      setOnSubmitLoader(false);
+                      setHideDelModal({ condition: false, targetID: null });
+                    }
+                  }}
+                >
+                  No
+                </PrimaryButton>
+              </div>
+            </div>
+          </Modal>
         </div>
-      </Modal>
-    </div>
+      )}
+    </>
   );
 }
 export default Dashboard;
