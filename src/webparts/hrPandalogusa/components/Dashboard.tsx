@@ -17,6 +17,7 @@ import {
   Persona,
   PersonaSize,
   PersonaPresence,
+  IBasePickerStyles,
   TooltipHost,
   TooltipDelay,
   DirectionalHint,
@@ -30,11 +31,40 @@ import {
   DatePicker,
   IDatePickerStyles,
   IIconStyles,
+  ThemeProvider,
 } from "@fluentui/react";
 import { sp } from "@pnp/sp/presets/all";
 import { useState } from "react";
 import Pagination from "office-ui-fabric-react-pagination";
+import { loadTheme, createTheme, Theme } from "@fluentui/react";
 
+const myTheme = createTheme({
+  palette: {
+    themePrimary: "#ff5e14",
+    themeLighterAlt: "#fff9f6",
+    themeLighter: "#ffe5d9",
+    themeLight: "#ffcfb9",
+    themeTertiary: "#ff9f72",
+    themeSecondary: "#ff7231",
+    themeDarkAlt: "#e65512",
+    themeDark: "#c24810",
+    themeDarker: "#8f350b",
+    neutralLighterAlt: "#faf9f8",
+    neutralLighter: "#f3f2f1",
+    neutralLight: "#edebe9",
+    neutralQuaternaryAlt: "#e1dfdd",
+    neutralQuaternary: "#d0d0d0",
+    neutralTertiaryAlt: "#c8c6c4",
+    neutralTertiary: "#a19f9d",
+    neutralSecondary: "#605e5c",
+    neutralPrimaryAlt: "#3b3a39",
+    neutralPrimary: "#323130",
+    neutralDark: "#201f1e",
+    black: "#000000",
+    white: "#ffffff",
+  },
+});
+// loadTheme(myTheme);
 // master Interface
 interface IItems {
   ID: number;
@@ -53,6 +83,7 @@ interface IItems {
   FileName: string;
   IsDeleted: boolean;
 }
+
 import * as moment from "moment";
 
 // interface ITest {
@@ -82,7 +113,7 @@ function Dashboard(props: any) {
     submittedDate: null,
   };
   let getDataObj = {
-    type: "new",
+    type: "",
     Id: 0,
     Title: "",
     Mail: [],
@@ -364,7 +395,7 @@ function Dashboard(props: any) {
     },
     {
       key: "column6",
-      name: "Not Acknowledged",
+      name: "Not acknowledged",
       fieldName: "PendingMembers",
       minWidth: 150,
       maxWidth: 200,
@@ -533,7 +564,7 @@ function Dashboard(props: any) {
           // color: "#ff7e00",
           // backgroundColor: "#ff7e0045",
           color: "#fff !important",
-          backgroundColor: "#ff7e00 !important",
+          backgroundColor: "rgb(255, 94, 20) !important",
           // "&:hover": {
           //   color: "#ff7e00",
           //   background: "#ff7e0045 !important",
@@ -587,7 +618,7 @@ function Dashboard(props: any) {
   const editmodalDesign: Partial<IModalStyles> = {
     main: {
       width: 505,
-      height: 376,
+      height: 400,
     },
   };
   const deleteModalStyle: Partial<IModalStyles> = {
@@ -601,6 +632,12 @@ function Dashboard(props: any) {
     root: {
       width: 200,
       marginRight: 20,
+      ".ms-TextField-fieldGroup": {
+        border: "1px solid #000 !important",
+        "::after": {
+          border: "1px solid #000 !important",
+        },
+      },
     },
   };
   const spinnerStyle: Partial<ISpinnerStyles> = {
@@ -643,14 +680,43 @@ function Dashboard(props: any) {
       width: 319,
       margin: "0 10px",
       ".ms-BasePicker-text": {
-        maxHeight: "100px",
+        minHeigth: 36,
+        maxHeight: 100,
         overflowX: "hidden",
         padding: "3px 5px",
-        // border: "1px solid rgb(91 144 214)",
-        border: "1px solid #000",
+        border: "none",
         "::after": {
           border: "none",
         },
+      },
+      border: "1px solid rgb(203, 214, 226) !important",
+      "::after": {
+        border: "2px solid rgb(91 144 214) !important",
+      },
+    },
+  };
+  const peoplePickerDisabledStyle: Partial<IBasePickerStyles> = {
+    root: {
+      background: "#f5f8fa",
+      width: 319,
+      margin: "0 10px",
+      ".ms-BasePicker-text": {
+        backgroundColor: "#dfe1e0",
+        minHeigth: 36,
+        maxHeight: 100,
+        overflowX: "hidden",
+        padding: "3px 5px",
+        border: "none",
+        "::after": {
+          border: "none",
+        },
+      },
+      input: {
+        display: "none",
+      },
+      border: "1px solid rgb(203, 214, 226) !important",
+      "::after": {
+        border: "2px solid rgb(91 144 214) !important",
       },
     },
   };
@@ -819,7 +885,7 @@ function Dashboard(props: any) {
   function validation() {
     let checkObj = valueObj;
     let isError = false;
-    if (!checkObj.Title) {
+    if (!checkObj.Title.trim()) {
       isError = true;
       checkObj.Valid = "Please Enter Title";
     } else if (!checkObj.File) {
@@ -862,8 +928,8 @@ function Dashboard(props: any) {
         data.file.getItem().then((item) => {
           item
             .update({
-              DocTitle: updateData.Title,
-              Comments: updateData.Comments,
+              DocTitle: updateData.Title.trim(),
+              Comments: updateData.Comments.trim(),
               FileName: updateData.File["name"],
               SignatoriesId: {
                 results: approvers,
@@ -945,8 +1011,16 @@ function Dashboard(props: any) {
   }
 
   //  peoplepicker variable
-  const GetUserDetails = (filterText: any) => {
-    var result = allPeoples.filter(
+  const GetUserDetails = (filterText: any, currentPersonas) => {
+    let _allPeoples = allPeoples;
+
+    if (currentPersonas.length > 0) {
+      _allPeoples = _allPeoples.filter(
+        (_people) =>
+          !currentPersonas.some((persona) => persona.ID == _people.ID)
+      );
+    }
+    var result = _allPeoples.filter(
       (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
     );
 
@@ -968,6 +1042,7 @@ function Dashboard(props: any) {
     setFilterKeys(filterKeys);
     setColumns(_columns);
     paginateFunction(1, masterData);
+    // getDatafromLibrary();
   }
 
   // Pagination function
@@ -996,7 +1071,7 @@ function Dashboard(props: any) {
   }, []);
 
   return (
-    <>
+    <ThemeProvider theme={myTheme}>
       {tableLoader ? (
         <div style={{ display: "flex", justifyContent: "center" }}>
           <Spinner />
@@ -1061,7 +1136,6 @@ function Dashboard(props: any) {
                   <div style={{ marginTop: 28 }}>
                     <IconButton
                       iconProps={resetIcon}
-                      style={{ color: "#000" }}
                       className={styles.iconBtn}
                       onClick={() => {
                         reset();
@@ -1084,6 +1158,7 @@ function Dashboard(props: any) {
                     setHideModal(true);
                     valueObj.Id = 0;
                     valueObj.type = "new";
+                    setValueObj({ ...valueObj });
                   }}
                 />
               </div>
@@ -1143,7 +1218,7 @@ function Dashboard(props: any) {
               {/* title */}
               <div
                 style={
-                  valueObj.type == "new" ? { height: 300 } : { height: 265 }
+                  valueObj.type == "new" ? { height: 300 } : { height: 284 }
                 }
               >
                 <div
@@ -1236,7 +1311,11 @@ function Dashboard(props: any) {
                   </div>
                   <div>:</div>
                   <NormalPeoplePicker
-                    styles={peoplePickerStyle}
+                    styles={
+                      valueObj.type == "edit"
+                        ? peoplePickerDisabledStyle
+                        : peoplePickerStyle
+                    }
                     onResolveSuggestions={GetUserDetails}
                     itemLimit={10}
                     disabled={valueObj.type == "edit"}
@@ -1260,7 +1339,7 @@ function Dashboard(props: any) {
                     style={{ resize: "none" }}
                     value={valueObj.Comments}
                     multiline
-                    disabled={valueObj.type == "edit"}
+                    readOnly={valueObj.type == "edit"}
                     onChange={(name) => {
                       // valueObj.Valid = "";
                       // setValueObj(valueObj);
@@ -1290,9 +1369,9 @@ function Dashboard(props: any) {
                   text="Cancel"
                   onClick={() => {
                     if (!onSubmitLoader) {
+                      setHideModal(false);
                       setOnSubmitLoader(false);
                       setValueObj(getDataObj);
-                      setHideModal(false);
                     }
                   }}
                 />
@@ -1333,7 +1412,7 @@ function Dashboard(props: any) {
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <PrimaryButton
                   style={{
-                    backgroundColor: "#000",
+                    backgroundColor: "#36b04b",
                     color: "#fff",
                     border: "none",
                   }}
@@ -1348,7 +1427,7 @@ function Dashboard(props: any) {
                 </PrimaryButton>
                 <PrimaryButton
                   style={{
-                    backgroundColor: "#6c757d",
+                    backgroundColor: "#b80000",
                     color: "#fff",
                     border: "none",
                   }}
@@ -1366,7 +1445,7 @@ function Dashboard(props: any) {
           </Modal>
         </div>
       )}
-    </>
+    </ThemeProvider>
   );
 }
 export default Dashboard;
