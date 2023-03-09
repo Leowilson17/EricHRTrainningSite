@@ -15,15 +15,17 @@ function Maincomponent() {
     sp.web.siteUsers().then((_allUsers) => {
       _allUsers.forEach((user) => {
         let userName = user.Title.toLowerCase(); // if (userName.indexOf("archive") == -1) {
-        allPeoples.push({
-          key: 1,
-          imageUrl:
-            `/_layouts/15/userphoto.aspx?size=S&accountname=` + `${user.Email}`,
-          text: user.Title,
-          ID: user.Id,
-          secondaryText: user.Email,
-          isValid: true,
-        }); // }
+        user.Email &&
+          allPeoples.push({
+            key: 1,
+            imageUrl:
+              `/_layouts/15/userphoto.aspx?size=S&accountname=` +
+              `${user.Email}`,
+            text: user.Title,
+            ID: user.Id,
+            secondaryText: user.Email,
+            isValid: true,
+          }); // }
       });
       setSiteUsers([...allPeoples]);
       setLoader(false);
