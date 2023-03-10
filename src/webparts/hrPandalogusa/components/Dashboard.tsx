@@ -37,6 +37,7 @@ import { sp } from "@pnp/sp/presets/all";
 import { useState } from "react";
 import Pagination from "office-ui-fabric-react-pagination";
 import { loadTheme, createTheme, Theme } from "@fluentui/react";
+import * as moment from "moment";
 
 const myTheme = createTheme({
   palette: {
@@ -83,8 +84,6 @@ interface IItems {
   FileName: string;
   IsDeleted: boolean;
 }
-
-import * as moment from "moment";
 
 // interface ITest {
 //   name: string;
@@ -497,7 +496,7 @@ function Dashboard(props: any) {
       onRender: (item) => (
         <div>
           <IconButton
-            id={item.ID}
+            // id={item.ID}
             iconProps={editIcon}
             style={{ color: "#36b04b", padding: 0 }}
             styles={IconBtnStyle}
@@ -573,15 +572,16 @@ function Dashboard(props: any) {
       },
       ".ms-DetailsRow": {
         boxShadow: "rgb(136 139 141 / 12%) 0px 3px 20px",
-        ":hover": {},
       },
     },
   };
   const statusDesign = mergeStyleSets({
     Pending: [
       {
-        backgroundColor: "rgb(241,236,187,100%)",
+        backgroundColor: "#f5c3be",
+        color: "red",
         padding: "5px 10px",
+        fontWeight: 600,
         borderRadius: "15px",
         // width: "180px",
         textAlign: "center",
@@ -590,7 +590,9 @@ function Dashboard(props: any) {
     ],
     InProgress: [
       {
-        backgroundColor: "rgb(65,148,197,30%)",
+        backgroundColor: "#eff1694d",
+        color: "orange",
+        fontWeight: 600,
         padding: "5px 10px",
         borderRadius: "15px",
         // width: "180px",
@@ -600,7 +602,9 @@ function Dashboard(props: any) {
     ],
     Completed: [
       {
-        backgroundColor: "rgb(88,214,68,35%)",
+        backgroundColor: "#cbeadc",
+        color: "green",
+        fontWeight: 600,
         padding: "5px 10px",
         // width: "180px",
         borderRadius: "15px",
@@ -910,7 +914,8 @@ function Dashboard(props: any) {
       return val.FileName == updateData.File["name"];
     });
     let fileNameArr = updateData.File["name"].split(".");
-    fileNameArr[0] = fileNameArr[0] + "v" + (fileNameFilter.length + 1);
+    fileNameArr[fileNameArr.length - 2] =
+      fileNameArr[fileNameArr.length - 2] + "v" + (fileNameFilter.length + 1);
     let fileName = fileNameArr.join(".");
 
     let approvers = [];
@@ -936,6 +941,9 @@ function Dashboard(props: any) {
               },
               NotAcknowledgedEmails: pendingApprovers,
               Status: "Pending",
+              SubmittedOn: moment().format("YYYY-MM-DD"),
+              Year: moment().year().toString(),
+              Week: moment().isoWeek().toString(),
             })
             .then((result) => {
               // console.log(result);
@@ -1137,6 +1145,11 @@ function Dashboard(props: any) {
                     <IconButton
                       iconProps={resetIcon}
                       className={styles.iconBtn}
+                      styles={{
+                        rootHovered: {
+                          backgroundColor: "none",
+                        },
+                      }}
                       onClick={() => {
                         reset();
                       }}
