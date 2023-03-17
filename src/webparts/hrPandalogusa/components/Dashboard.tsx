@@ -517,7 +517,7 @@ const Dashboard = (props: any): JSX.Element => {
             }}
           />
           <Icon
-            iconName="ActionCenter"
+            iconName="DocumentApproval"
             className={
               item.Status != "Completed" &&
               item.PendingMembers.some(
@@ -1314,7 +1314,7 @@ const Dashboard = (props: any): JSX.Element => {
   const acknowledgeValidation = () => {
     let _acknowledgePopup = { ...acknowledgePopup };
 
-    if (!_acknowledgePopup.comments) {
+    if (!_acknowledgePopup.comments.trim()) {
       _acknowledgePopup.commentsValidation = true;
       _acknowledgePopup.overAllValidation = true;
     }
@@ -1665,9 +1665,7 @@ const Dashboard = (props: any): JSX.Element => {
                   {/* people picker */}
                   <div className={styles.detailsSection}>
                     <div>
-                      <Label>
-                        Excluded <span style={{ color: "red" }}>*</span>
-                      </Label>
+                      <Label>Excluded</Label>
                     </div>
                     <div>:</div>
                     <NormalPeoplePicker
@@ -1766,7 +1764,7 @@ const Dashboard = (props: any): JSX.Element => {
               isOpen={acknowledgePopup.condition}
               styles={{
                 main: {
-                  width: "30%",
+                  width: "35%",
                   borderRadius: 5,
                 },
               }}
