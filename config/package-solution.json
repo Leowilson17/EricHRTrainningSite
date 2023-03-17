@@ -1,40 +1,59 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
-  "solution": {
-    "name": "hr-pandalogusa-client-side-solution",
-    "id": "5ae7fe58-7511-42a7-a352-3bc3ba64549d",
-    "version": "1.0.0.0",
-    "includeClientSideAssets": true,
-    "skipFeatureDeployment": true,
-    "isDomainIsolated": false,
-    "developer": {
-      "name": "",
-      "websiteUrl": "",
-      "privacyUrl": "",
-      "termsOfUseUrl": "",
-      "mpnId": "Undefined-1.14.0"
+    "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+    "solution": {
+        "name": "hr-pandalogusa-client-side-solution",
+        "id": "5ae7fe58-7511-42a7-a352-3bc3ba64549d",
+        "version": "1.0.0.0",
+        "includeClientSideAssets": true,
+        "skipFeatureDeployment": true,
+        "isDomainIsolated": false,
+        "webApiPermissionRequests": [{
+                "resource": "Microsoft Graph",
+                "scope": "Directory.Read.All"
+            },
+            {
+                "resource": "Microsoft Graph",
+                "scope": "Directory.ReadWrite.All"
+            },
+            {
+                "resource": "Microsoft Graph",
+                "scope": "Group.Read.All"
+            },
+            {
+                "resource": "Microsoft Graph",
+                "scope": "Group.ReadWrite.All"
+            },
+            {
+                "resource": "Microsoft Graph",
+                "scope": "GroupMember.Read.All"
+            }
+        ],
+        "developer": {
+            "name": "",
+            "websiteUrl": "",
+            "privacyUrl": "",
+            "termsOfUseUrl": "",
+            "mpnId": "Undefined-1.14.0"
+        },
+        "metadata": {
+            "shortDescription": {
+                "default": "HRPandalogusa description"
+            },
+            "longDescription": {
+                "default": "HRPandalogusa description"
+            },
+            "screenshotPaths": [],
+            "videoUrl": "",
+            "categories": []
+        },
+        "features": [{
+            "title": "hr-pandalogusa Feature",
+            "description": "The feature that activates elements of the hr-pandalogusa solution.",
+            "id": "77df5a0e-3cba-43ac-a413-40c1ac5621f1",
+            "version": "1.0.0.0"
+        }]
     },
-    "metadata": {
-      "shortDescription": {
-        "default": "HRPandalogusa description"
-      },
-      "longDescription": {
-        "default": "HRPandalogusa description"
-      },
-      "screenshotPaths": [],
-      "videoUrl": "",
-      "categories": []
-    },
-    "features": [
-      {
-        "title": "hr-pandalogusa Feature",
-        "description": "The feature that activates elements of the hr-pandalogusa solution.",
-        "id": "77df5a0e-3cba-43ac-a413-40c1ac5621f1",
-        "version": "1.0.0.0"
-      }
-    ]
-  },
-  "paths": {
-    "zippedPackage": "solution/hr-pandalogusa.sppkg"
-  }
+    "paths": {
+        "zippedPackage": "solution/hr-pandalogusa.sppkg"
+    }
 }

@@ -5,6 +5,7 @@ import { escape } from "@microsoft/sp-lodash-subset";
 import Maincomponent from "./MainComponent";
 import "../../../ExternalRef/Css/Style.css";
 import { sp } from "@pnp/sp/presets/all";
+import { graph } from "@pnp/graph";
 
 export default class HrPandalogusa extends React.Component<
   IHrPandalogusaProps,
@@ -13,6 +14,9 @@ export default class HrPandalogusa extends React.Component<
   constructor(prop: IHrPandalogusaProps, state: {}) {
     super(prop);
     sp.setup({
+      spfxContext: this.props.context,
+    });
+    graph.setup({
       spfxContext: this.props.context,
     });
   }
@@ -26,6 +30,8 @@ export default class HrPandalogusa extends React.Component<
       userDisplayName,
     } = this.props;
 
-    return <Maincomponent />;
+    return (
+      <Maincomponent spcontext={this.props.context} graphContext={graph} />
+    );
   }
 }

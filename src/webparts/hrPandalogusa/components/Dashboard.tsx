@@ -1,4 +1,10 @@
 import * as React from "react";
+import { useState, useEffect } from "react";
+import { sp } from "@pnp/sp/presets/all";
+import { graph } from "@pnp/graph";
+import "@pnp/graph/users";
+import "@pnp/graph/groups";
+import * as moment from "moment";
 import styles from "./HrPandalogusa.module.scss";
 import {
   Label,
@@ -7,13 +13,10 @@ import {
   Dropdown,
   IDropdownOption,
   IDropdownStyles,
-  Selection,
   SelectionMode,
   DetailsList,
   IColumn,
-  IconButton,
   IDetailsListStyles,
-  IPersonaSharedProps,
   Persona,
   PersonaSize,
   PersonaPresence,
@@ -30,14 +33,13 @@ import {
   ISpinnerStyles,
   DatePicker,
   IDatePickerStyles,
-  IIconStyles,
   ThemeProvider,
+  Icon,
+  ITextFieldStyles,
 } from "@fluentui/react";
-import { sp } from "@pnp/sp/presets/all";
-import { useState } from "react";
 import Pagination from "office-ui-fabric-react-pagination";
 import { loadTheme, createTheme, Theme } from "@fluentui/react";
-import * as moment from "moment";
+import { ILabelStyles } from "office-ui-fabric-react";
 
 const myTheme = createTheme({
   palette: {
@@ -65,44 +67,38 @@ const myTheme = createTheme({
     white: "#ffffff",
   },
 });
-// loadTheme(myTheme);
-// master Interface
+
 interface IItems {
   ID: number;
   Title: string;
   Status: string;
   PendingMembers: any[];
   ApprovedMembers: any[];
-  Approvers: any[];
+  Signatories: any[];
+  Excluded: any[];
   Link: string;
   created: string;
-  PendingMembersID: number[];
-  approvedMembersID: number[];
-  approversID: number[];
+  // PendingMembersID: number[];
+  // approvedMembersID: number[];
+  // approversID: number[];
+  DocVersion: number;
   DocTitle: string;
   Comments: string;
   FileName: string;
   IsDeleted: boolean;
+  Uploader: {};
 }
-
-// interface ITest {
-//   name: string;
-//   age: number;
-//   domain: string;
-//   _boolean: boolean;
-// }
 
 let sortData = [];
 
+let isLoggedUserManager: boolean;
+
 const totalPageItems: number = 10;
 
-function Dashboard(props: any) {
+const Dashboard = (props: any): JSX.Element => {
   let allPeoples = props.peopleList;
-
-  // let testTS: Partial<ITest> = {
-  //   name: "test",
-  //   age: 12,
-  // };
+  const loggedUserName: string = props.spcontext.pageContext.user.displayName;
+  const loggedUserEmail: string = props.spcontext.pageContext.user.email;
 
   // variables
   let filterKeys = {
@@ -116,6 +112,7 @@ function Dashboard(props: any) {
     Id: 0,
     Title: "",
     Mail: [],
+    Excluded: [],
     File: undefined,
     FileName: "",
     Valid: "",
@@ -133,7 +130,7 @@ function Dashboard(props: any) {
   const _columns: IColumn[] = [
     {
       key: "column1",
-      name: "File name",
+      name: "File Name",
       fieldName: "Title",
       minWidth: 200,
       maxWidth: 350,
@@ -155,10 +152,61 @@ function Dashboard(props: any) {
     },
     {
       key: "column2",
+      name: "Uploader",
+      fieldName: "Uploader",
+      minWidth: 150,
+      maxWidth: 200,
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
+      },
+      onRender: (item) => {
+        return item.Uploader != null ? (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <div title={item.Uploader.text} style={{ cursor: "pointer" }}>
+              <Persona
+                styles={{
+                  root: {
+                    display: "inline",
+                  },
+                }}
+                showOverflowTooltip
+                size={PersonaSize.size24}
+                presence={PersonaPresence.none}
+                showInitialsUntilImageLoads={true}
+                imageUrl={
+                  "/_layouts/15/userphoto.aspx?size=S&username=" +
+                  `${item.Uploader.secondaryText}`
+                }
+              />
+            </div>
+            <div>
+              <Label style={{ marginLeft: 10 }}>{item.Uploader.text}</Label>
+            </div>
+          </div>
+        ) : null;
+      },
+    },
+    {
+      key: "column3",
+      name: "Submitted On",
+      fieldName: "created",
+      minWidth: 150,
+      maxWidth: 150,
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
+      },
+      onRender: (data: any) => (
+        <div style={{ fontSize: 13, color: "#000" }}>
+          {moment(data.created).format("DD/MM/YYYY")}
+        </div>
+      ),
+    },
+    {
+      key: "column4",
       name: "Status",
       fieldName: "Status",
-      minWidth: 80,
-      maxWidth: 90,
+      minWidth: 150,
+      maxWidth: 150,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
@@ -177,17 +225,14 @@ function Dashboard(props: any) {
       ),
     },
     {
-      key: "column3",
+      key: "column5",
       name: "Signatories",
       fieldName: "Approvers",
       minWidth: 150,
       maxWidth: 200,
-      // onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-      //   _onColumnClick(ev, column);
-      // },
-      onRender: (data: any) => {
+      onRender: (data: IItems) => {
         return (
-          data.Approvers.length > 0 && (
+          data.Signatories.length > 0 && (
             <>
               {
                 <div
@@ -198,10 +243,10 @@ function Dashboard(props: any) {
                     cursor: "pointer",
                   }}
                 >
-                  {data.Approvers.map((app, index) => {
+                  {data.Signatories.map((app, index) => {
                     if (index < 3) {
                       return (
-                        <div title={data.Approvers[index].text}>
+                        <div title={data.Signatories[index].text}>
                           <Persona
                             styles={{
                               root: {
@@ -214,31 +259,19 @@ function Dashboard(props: any) {
                             showInitialsUntilImageLoads={true}
                             imageUrl={
                               "/_layouts/15/userphoto.aspx?size=S&username=" +
-                              `${data.Approvers[index].secondaryText}`
+                              `${data.Signatories[index].secondaryText}`
                             }
                           />
                         </div>
                       );
                     }
                   })}
-                  {/* <div title={data.Approvers[0].text}>
-                    <Persona
-                      showOverflowTooltip
-                      size={PersonaSize.size24}
-                      presence={PersonaPresence.none}
-                      showInitialsUntilImageLoads={true}
-                      imageUrl={
-                        "/_layouts/15/userphoto.aspx?size=S&username=" +
-                        `${data.Approvers[0].secondaryText}`
-                      }
-                    />
-                  </div> */}
-                  {data.Approvers.length > 3 ? (
+                  {data.Signatories.length > 3 ? (
                     <div>
                       <TooltipHost
                         content={
                           <ul style={{ margin: 10, padding: 0 }}>
-                            {data.Approvers.map((DName) => {
+                            {data.Signatories.map((DName) => {
                               return (
                                 <li style={{ listStyleType: "none" }}>
                                   <div style={{ display: "flex" }}>
@@ -266,11 +299,8 @@ function Dashboard(props: any) {
                         directionalHint={DirectionalHint.bottomCenter}
                         styles={{ root: { display: "inline-block" } }}
                       >
-                        <div
-                          className={styles.extraPeople}
-                          // aria-describedby={item.ID}
-                        >
-                          {data.Approvers.length}
+                        <div className={styles.extraPeople}>
+                          {data.Signatories.length}
                         </div>
                       </TooltipHost>
                     </div>
@@ -282,30 +312,13 @@ function Dashboard(props: any) {
         );
       },
     },
+
     {
-      key: "column4",
-      name: "Submitted on",
-      fieldName: "created",
-      minWidth: 150,
-      maxWidth: 200,
-      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-        _onColumnClick(ev, column);
-      },
-      onRender: (data: any) => (
-        <div style={{ fontSize: 13, color: "#000" }}>
-          {moment(data.created).format("DD/MM/YYYY")}
-        </div>
-      ),
-    },
-    {
-      key: "column5",
+      key: "column6",
       name: "Acknowledged",
       fieldName: "ApprovedMembers",
       minWidth: 150,
       maxWidth: 200,
-      // onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-      //   _onColumnClick(ev, column);
-      // },
       onRender: (data: any) => {
         return (
           data.ApprovedMembers.length > 0 && (
@@ -372,14 +385,10 @@ function Dashboard(props: any) {
                           </ul>
                         }
                         delay={TooltipDelay.zero}
-                        // id={item.ID}
                         directionalHint={DirectionalHint.bottomCenter}
                         styles={{ root: { display: "inline-block" } }}
                       >
-                        <div
-                          className={styles.extraPeople}
-                          // aria-describedby={item.ID}
-                        >
+                        <div className={styles.extraPeople}>
                           {data.ApprovedMembers.length}
                         </div>
                       </TooltipHost>
@@ -393,14 +402,11 @@ function Dashboard(props: any) {
       },
     },
     {
-      key: "column6",
-      name: "Not acknowledged",
+      key: "column7",
+      name: "Not Acknowledged",
       fieldName: "PendingMembers",
       minWidth: 150,
       maxWidth: 200,
-      // onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-      //   _onColumnClick(ev, column);
-      // },
       onRender: (data: any) => {
         return (
           data.PendingMembers.length > 0 && (
@@ -467,14 +473,10 @@ function Dashboard(props: any) {
                           </ul>
                         }
                         delay={TooltipDelay.zero}
-                        // id={item.ID}
                         directionalHint={DirectionalHint.bottomCenter}
                         styles={{ root: { display: "inline-block" } }}
                       >
-                        <div
-                          className={styles.extraPeople}
-                          // aria-describedby={item.ID}
-                        >
+                        <div className={styles.extraPeople}>
                           {data.PendingMembers.length}
                         </div>
                       </TooltipHost>
@@ -488,25 +490,22 @@ function Dashboard(props: any) {
       },
     },
     {
-      key: "column7",
+      key: "column8",
       name: "Action",
       minWidth: 70,
       maxWidth: 100,
-      //   onColumnClick: this._onColumnClick,
-      onRender: (item) => (
+      onRender: (item: IItems) => (
         <div>
-          <IconButton
-            // id={item.ID}
-            iconProps={editIcon}
-            style={{ color: "#36b04b", padding: 0 }}
-            styles={IconBtnStyle}
-            onClick={() => {
-              // console.log(item);
+          <Icon
+            iconName="View"
+            className={iconStyleClass.viewIcon}
+            onClick={(): void => {
               let getDataObj = {
                 type: "edit",
                 Id: item.ID,
                 Title: item.DocTitle,
-                Mail: item.Approvers,
+                Mail: item.Signatories,
+                Excluded: item.Excluded,
                 File: {},
                 FileName: item.Title,
                 Valid: "",
@@ -517,23 +516,48 @@ function Dashboard(props: any) {
               setHideModal(true);
             }}
           />
-          <IconButton
-            iconProps={deleteIcon}
-            style={{ color: "#b80000" }}
-            styles={IconBtnStyle}
-            onClick={() => {
-              setHideDelModal({ condition: true, targetID: item.ID });
+          <Icon
+            iconName="ActionCenter"
+            className={
+              item.Status != "Completed" &&
+              item.PendingMembers.some(
+                (user) => user.secondaryText == loggedUserEmail
+              )
+                ? iconStyleClass.popupIcon
+                : iconStyleClass.disabledIcon
+            }
+            onClick={(): void => {
+              if (
+                item.Status != "Completed" &&
+                item.PendingMembers.some(
+                  (user) => user.secondaryText == loggedUserEmail
+                )
+              ) {
+                setAcknowledgePopup({
+                  condition: true,
+                  obj: { ...item },
+                  isFileOpened: false,
+                  comments: "",
+                  commentsValidation: false,
+                  overAllValidation: false,
+                });
+              }
             }}
           />
+          {isLoggedUserManager ? (
+            <Icon
+              iconName="Delete"
+              className={iconStyleClass.deleteIcon}
+              onClick={(): void => {
+                setHideDelModal({ condition: true, targetID: item.ID });
+              }}
+            />
+          ) : null}
         </div>
       ),
     },
   ];
   // style variables
-  // icon variables
-  const editIcon = { iconName: "View" };
-  const resetIcon = { iconName: "Refresh" };
-  const deleteIcon = { iconName: "Delete" };
 
   const searchStyle = {
     root: {
@@ -560,14 +584,8 @@ function Dashboard(props: any) {
       ".ms-DetailsHeader": {
         paddingTop: 0,
         ".ms-DetailsHeader-cell": {
-          // color: "#ff7e00",
-          // backgroundColor: "#ff7e0045",
           color: "#fff !important",
           backgroundColor: "rgb(255, 94, 20) !important",
-          // "&:hover": {
-          //   color: "#ff7e00",
-          //   background: "#ff7e0045 !important",
-          // },
         },
       },
       ".ms-DetailsRow": {
@@ -583,7 +601,6 @@ function Dashboard(props: any) {
         padding: "5px 10px",
         fontWeight: 600,
         borderRadius: "15px",
-        // width: "180px",
         textAlign: "center",
         margin: "0",
       },
@@ -595,7 +612,6 @@ function Dashboard(props: any) {
         fontWeight: 600,
         padding: "5px 10px",
         borderRadius: "15px",
-        // width: "180px",
         textAlign: "center",
         margin: "0",
       },
@@ -606,7 +622,6 @@ function Dashboard(props: any) {
         color: "green",
         fontWeight: 600,
         padding: "5px 10px",
-        // width: "180px",
         borderRadius: "15px",
         textAlign: "center",
         margin: "0",
@@ -615,20 +630,25 @@ function Dashboard(props: any) {
   });
   const newmodalDesign: Partial<IModalStyles> = {
     main: {
+      padding: 10,
       width: 505,
-      height: 418,
+      // height: 418,
+      height: "auto",
+      borderRadius: 5,
     },
   };
   const editmodalDesign: Partial<IModalStyles> = {
     main: {
+      padding: 10,
       width: 505,
-      height: 400,
+      // height: 400,
+      height: "auto",
+      borderRadius: 5,
     },
   };
   const deleteModalStyle: Partial<IModalStyles> = {
     main: {
       width: 390,
-      height: 165,
       borderRadius: 5,
     },
   };
@@ -657,7 +677,6 @@ function Dashboard(props: any) {
     },
     fieldGroup: {
       height: 40,
-      // borderRadius: 5,
       backgroundColor: "#f5f8fa !important",
       border: "1px solid #cbd6e2 !important",
       "&::after": {
@@ -724,13 +743,86 @@ function Dashboard(props: any) {
       },
     },
   };
-  const IconBtnStyle: Partial<IIconStyles> = {
+  const popupLabelStyle: Partial<ILabelStyles> = {
     root: {
-      span: {
-        justifyContent: "flex-start !important",
+      width: "25%",
+      fontSize: 16,
+    },
+  };
+  const popupTextFieldStyle: Partial<ITextFieldStyles> = {
+    root: {
+      width: "73%",
+      marginBottom: 10,
+    },
+    fieldGroup: {
+      height: 40,
+      border: "1px solid #000",
+      "::after": {
+        border: "1px solid #000 !important",
       },
     },
   };
+  const popupTextFieldErrorStyle: Partial<ITextFieldStyles> = {
+    root: {
+      width: "73%",
+      marginBottom: 10,
+    },
+    fieldGroup: {
+      height: 40,
+      border: "2px solid #f00",
+      ":hover": {
+        border: "2px solid #f00 !important",
+      },
+      "::after": {
+        border: "2px solid #f00 !important",
+      },
+    },
+  };
+  const iconStyle = {
+    padding: 0,
+    fontSize: 18,
+    height: 22,
+    width: 30,
+  };
+  const iconStyleClass = mergeStyleSets({
+    viewIcon: [
+      {
+        color: "#36b0ff",
+        cursor: "pointer",
+      },
+      iconStyle,
+    ],
+    popupIcon: [
+      {
+        color: "#36b04b",
+        cursor: "pointer",
+      },
+      iconStyle,
+    ],
+    deleteIcon: [
+      {
+        color: "#b80000",
+        cursor: "pointer",
+      },
+      iconStyle,
+    ],
+    disabledIcon: [
+      {
+        color: "#ababab",
+        cursor: "not-allowed",
+      },
+      iconStyle,
+    ],
+    refreshIcon: {
+      fontSize: 22,
+      cursor: "pointer",
+      marginTop: 5,
+      color: "#ff5e14",
+      ":hover": {
+        backgroundColor: "none",
+      },
+    },
+  });
 
   // State variable
   const [nofillterData, setnofillterData] = useState<IItems[]>([]);
@@ -749,29 +841,64 @@ function Dashboard(props: any) {
   const [onSubmitLoader, setOnSubmitLoader] = useState<boolean>(false);
   const [tableLoader, settableLoader] = useState<boolean>(false);
 
-  // const [popup, setPopup] = useState({
-  //   condition: false,
-  //   reponseData: getDataObj,
-  // });
+  const [acknowledgePopup, setAcknowledgePopup] = useState<{
+    condition: boolean;
+    obj: IItems;
+    isFileOpened: boolean;
+    comments: string;
+    commentsValidation: boolean;
+    overAllValidation: boolean;
+  }>({
+    condition: false,
+    obj: null,
+    isFileOpened: false,
+    comments: "",
+    commentsValidation: false,
+    overAllValidation: false,
+  });
 
   // function
+
+  const getManagers = () => {
+    sp.web.siteGroups
+      .getByName("Managers")
+      .users.get()
+      .then((_managers: any[]) => {
+        let _isManager: boolean =
+          _managers.length > 0
+            ? _managers.some((manager) => manager.Email == loggedUserEmail)
+            : false;
+
+        isLoggedUserManager = _isManager;
+        getDatafromLibrary();
+      })
+      .catch((error) => {
+        err(error, "getManagers");
+      });
+  };
   // get Document from Library
   function getDatafromLibrary() {
     // settableLoader(true);
     const getDataArray: IItems[] = [];
     sp.web
       .getFolderByServerRelativePath("/sites/HRDev/Shared Documents")
-      .files.expand("ListItemAllFields")
+      .files.select("*,Author/Title,Author/EMail")
+      .expand("Author,ListItemAllFields")
       .top(5000)
       .orderBy("TimeLastModified", false)
       .get()
-      .then((value: any) => {
+      .then((value: any[]) => {
         let pendingMembers = [];
         let approvedMembers = [];
-        let approvers = [];
+        let _Signatories = [];
+        let _Excluded = [];
+        let _uploader = [];
 
         value.forEach((data) => {
-          // console.log(data);
+          _uploader = allPeoples.filter((users) => {
+            return users.secondaryText == data.Author.Email;
+          });
+
           //pendingMembers
           pendingMembers = [];
           data.ListItemAllFields["NotAcknowledgedEmails"] &&
@@ -779,8 +906,8 @@ function Dashboard(props: any) {
               .split(";")
               .forEach((val) => {
                 let tempArr = [];
-                tempArr = allPeoples.filter((arr) => {
-                  return arr.secondaryText == val && val;
+                tempArr = props.azureUsers.filter((users) => {
+                  return val && users.secondaryText == val;
                 });
                 if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
               });
@@ -792,21 +919,33 @@ function Dashboard(props: any) {
               .split(";")
               .forEach((val) => {
                 let tempArr = [];
-                tempArr = allPeoples.filter((arr) => {
-                  return arr.secondaryText == val && val;
+                tempArr = props.azureUsers.filter((users) => {
+                  return val && users.secondaryText == val;
                 });
                 if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
               });
 
           //approvers
-          approvers = [];
+          _Signatories = [];
           data.ListItemAllFields["SignatoriesId"] &&
             data.ListItemAllFields["SignatoriesId"].forEach((val) => {
               let tempArr = [];
               tempArr = allPeoples.filter((arr) => {
                 return arr.ID == val;
               });
-              if (tempArr.length > 0) approvers.push(tempArr[0]);
+              if (tempArr.length > 0) _Signatories.push(tempArr[0]);
+            });
+
+          // Excluded
+          _Excluded = [];
+
+          data.ListItemAllFields["ExcludedId"] &&
+            data.ListItemAllFields["ExcludedId"].forEach((val) => {
+              let tempArr = [];
+              tempArr = allPeoples.filter((arr) => {
+                return arr.ID == val;
+              });
+              if (tempArr.length > 0) _Excluded.push(tempArr[0]);
             });
 
           getDataArray.push({
@@ -815,21 +954,24 @@ function Dashboard(props: any) {
             Status: data.ListItemAllFields["Status"],
             PendingMembers: pendingMembers,
             ApprovedMembers: approvedMembers,
-            Approvers: approvers,
+            Signatories: _Signatories,
+            Excluded: _Excluded,
             Link: data.ServerRelativeUrl,
             created: data.TimeCreated,
-            PendingMembersID: data.ListItemAllFields["PendingApproversId"],
-            approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
-            approversID: data.ListItemAllFields["ApproversId"],
+            // PendingMembersID: data.ListItemAllFields["PendingApproversId"],
+            // approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
+            // approversID: data.ListItemAllFields["ApproversId"],
+            DocVersion: data.ListItemAllFields["DocVersion"]
+              ? data.ListItemAllFields["DocVersion"]
+              : null,
             DocTitle: data.ListItemAllFields["DocTitle"],
             Comments: data.ListItemAllFields["Comments"],
             FileName: data.ListItemAllFields["FileName"],
             IsDeleted: data.ListItemAllFields["IsDelete"] ? true : false,
+            Uploader: _uploader.length > 0 ? _uploader[0] : null,
           });
         });
-        let filteredData = getDataArray.filter(
-          (_value) => _value.IsDeleted != true
-        );
+        let filteredData = getDataArray.filter((_value) => !_value.IsDeleted);
         sortData = [...filteredData];
         setnofillterData(getDataArray);
         setMasterData(filteredData);
@@ -859,7 +1001,7 @@ function Dashboard(props: any) {
     }
     if (tempFilter.Approvers) {
       tempArr = tempArr.filter((arr) => {
-        return arr.Approvers.some((app) =>
+        return arr.Signatories.some((app) =>
           app.text.toLowerCase().includes(tempFilter.Approvers.toLowerCase())
         );
       });
@@ -891,13 +1033,13 @@ function Dashboard(props: any) {
     let isError = false;
     if (!checkObj.Title.trim()) {
       isError = true;
-      checkObj.Valid = "Please Enter Title";
+      checkObj.Valid = "* Please Enter Title";
     } else if (!checkObj.File) {
       isError = true;
-      checkObj.Valid = "Please Choose File";
+      checkObj.Valid = "* Please Choose File";
     } else if (checkObj.Mail.length == 0) {
       isError = true;
-      checkObj.Valid = "Please Select Signatories";
+      checkObj.Valid = "* Please Select Signatories";
     }
     setValueObj({ ...checkObj });
     if (isError == false) {
@@ -910,50 +1052,75 @@ function Dashboard(props: any) {
   // add file
   function addFile(_valueObj) {
     let updateData = _valueObj;
-    let fileNameFilter = nofillterData.filter((val) => {
-      return val.FileName == updateData.File["name"];
-    });
+    let _docVersion: number = 1;
+    let fileNameFilter: IItems[] = nofillterData.filter(
+      (val) => val.FileName == updateData.File["name"]
+    );
+
+    if (fileNameFilter.length > 0) {
+      fileNameFilter = fileNameFilter.sort((a, b) => {
+        return b.DocVersion - a.DocVersion;
+      });
+      _docVersion = fileNameFilter[0].DocVersion + 1;
+    }
+
     let fileNameArr = updateData.File["name"].split(".");
     fileNameArr[fileNameArr.length - 2] =
-      fileNameArr[fileNameArr.length - 2] + "v" + (fileNameFilter.length + 1);
+      fileNameArr[fileNameArr.length - 2] + "v" + _docVersion;
     let fileName = fileNameArr.join(".");
 
-    let approvers = [];
-    updateData.Mail.forEach((people) => {
-      approvers.push(people.ID);
-    });
-    let pendingApprovers = "";
-    updateData.Mail.forEach((people) => {
-      pendingApprovers += people.secondaryText + ";";
-    });
+    let filteredsignatories: any[] = updateData.Mail.filter(
+      (_sign) =>
+        !updateData.Excluded.some(
+          (exclude) => exclude.secondaryText == _sign.secondaryText
+        )
+    );
+
+    let approvers: number[] = filteredsignatories.map((people) => people.ID);
+
+    let excludedUsers: number[] =
+      updateData.Excluded.length > 0
+        ? updateData.Excluded.map((people) => people.ID)
+        : [];
+
+    let pendingApprovers: string = emailReturnFunction(
+      filteredsignatories,
+      updateData.Excluded
+    );
+
+    let responseData = {
+      DocTitle: updateData.Title.trim(),
+      DocVersion: _docVersion,
+      Comments: updateData.Comments.trim(),
+      FileName: updateData.File["name"],
+      SignatoriesId: {
+        results: approvers,
+      },
+      ExcludedId: {
+        results: excludedUsers,
+      },
+      NotAcknowledgedEmails: pendingApprovers,
+      Status: "Pending",
+      SubmittedOn: moment().format("YYYY-MM-DD"),
+      Year: moment().year().toString(),
+      Week: moment().isoWeek().toString(),
+    };
+
     sp.web
       .getFolderByServerRelativePath("/sites/HRDev/Shared Documents")
       .files.add(fileName, updateData.File, false)
       .then((data) => {
         data.file.getItem().then((item) => {
           item
-            .update({
-              DocTitle: updateData.Title.trim(),
-              Comments: updateData.Comments.trim(),
-              FileName: updateData.File["name"],
-              SignatoriesId: {
-                results: approvers,
-              },
-              NotAcknowledgedEmails: pendingApprovers,
-              Status: "Pending",
-              SubmittedOn: moment().format("YYYY-MM-DD"),
-              Year: moment().year().toString(),
-              Week: moment().isoWeek().toString(),
-            })
-            .then((result) => {
-              // console.log(result);
+            .update(responseData)
+            .then((_) => {
               setValueObj(getDataObj);
               setOnSubmitLoader(false);
               setHideModal(false);
-              getDatafromLibrary();
+              getManagers();
             })
             .catch((error) => {
-              console.log(error);
+              err(error, "addFile");
             });
         });
       })
@@ -962,6 +1129,47 @@ function Dashboard(props: any) {
       });
   }
 
+  const emailReturnFunction = (
+    userArr: any[],
+    excludedUsers: any[]
+  ): string => {
+    let _pendingApprovers: string[] = [];
+
+    if (userArr.length > 0) {
+      for (let i = 0; i < userArr.length; i++) {
+        if (userArr[i].isGroup == false) {
+          _pendingApprovers.push(userArr[i].secondaryText);
+        } else {
+          let targetAzureGroup = props.azureGroups.filter(
+            (ad) => ad.groupName == userArr[i].text
+          );
+          if (targetAzureGroup.length > 0 && targetAzureGroup[0].groupID) {
+            targetAzureGroup[0].groupMembers.forEach((user) => {
+              if (
+                user.userPrincipalName &&
+                !_pendingApprovers.some(
+                  (_user) => _user == user.userPrincipalName
+                )
+              ) {
+                _pendingApprovers.push(user.userPrincipalName);
+              }
+            });
+          }
+        }
+
+        if (i == userArr.length - 1) {
+          _pendingApprovers = _pendingApprovers.filter(
+            (mail: string) =>
+              !excludedUsers.some((exclude) => exclude.secondaryText == mail)
+          );
+          return _pendingApprovers.join(";");
+        }
+      }
+    } else {
+      return "";
+    }
+  };
+
   // delete function
   function deleteFunction(val) {
     sp.web.lists
@@ -969,7 +1177,7 @@ function Dashboard(props: any) {
       .items.getById(val)
       .update({ IsDelete: true })
       .then(() => {
-        getDatafromLibrary();
+        getManagers();
         setHideDelModal({ condition: false, targetID: null });
         setOnSubmitLoader(false);
       });
@@ -1036,6 +1244,25 @@ function Dashboard(props: any) {
       doesTextStartWith(item.text as string, filterText)
     );
   };
+
+  const GetUserDetailsUserOnly = (filterText: any, currentPersonas) => {
+    let _allPeoples = allPeoples.filter((user) => !user.isGroup);
+
+    if (currentPersonas.length > 0) {
+      _allPeoples = _allPeoples.filter(
+        (_people) =>
+          !currentPersonas.some((persona) => persona.ID == _people.ID)
+      );
+    }
+    var result = _allPeoples.filter(
+      (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
+    );
+
+    return result.filter((item) =>
+      doesTextStartWith(item.text as string, filterText)
+    );
+  };
+
   const doesTextStartWith = (text: string, filterText: string) => {
     return text.toLowerCase().indexOf(filterText.toLowerCase()) === 0;
   };
@@ -1050,7 +1277,6 @@ function Dashboard(props: any) {
     setFilterKeys(filterKeys);
     setColumns(_columns);
     paginateFunction(1, masterData);
-    // getDatafromLibrary();
   }
 
   // Pagination function
@@ -1068,14 +1294,131 @@ function Dashboard(props: any) {
   };
 
   // error handling
-  function err(msg: string, val: any): void {
-    console.log(msg, val);
+  function err(msg: string, error: any): void {
+    console.log(msg, error);
   }
+
+  const acknowledgePopupOnChangeHandler = (
+    key: string,
+    value: string
+  ): void => {
+    let _acknowledgePopup = { ...acknowledgePopup };
+
+    _acknowledgePopup[key] = value;
+    _acknowledgePopup[`${key}Validation`] = false;
+    _acknowledgePopup.overAllValidation = false;
+
+    setAcknowledgePopup({ ..._acknowledgePopup });
+  };
+
+  const acknowledgeValidation = () => {
+    let _acknowledgePopup = { ...acknowledgePopup };
+
+    if (!_acknowledgePopup.comments) {
+      _acknowledgePopup.commentsValidation = true;
+      _acknowledgePopup.overAllValidation = true;
+    }
+
+    if (!_acknowledgePopup.overAllValidation) {
+      updateFunction(_acknowledgePopup);
+    }
+    setAcknowledgePopup({ ..._acknowledgePopup });
+  };
+
+  const updateFunction = (_acknowledgePopup) => {
+    if (
+      _acknowledgePopup.obj.PendingMembers.some(
+        (user) => user.secondaryText.trim() == loggedUserEmail
+      )
+    ) {
+      let updatedStatus: string = "";
+      let targetUser = _acknowledgePopup.obj.PendingMembers.filter(
+        (user) => user.secondaryText.trim() == loggedUserEmail
+      );
+
+      let updatedPendingApprovers = _acknowledgePopup.obj.PendingMembers.filter(
+        (user) => user.secondaryText.trim() != loggedUserEmail
+      );
+
+      let updatedApprovedMembers = [
+        ..._acknowledgePopup.obj.ApprovedMembers,
+        ...targetUser,
+      ];
+
+      updatedPendingApprovers = updatedPendingApprovers.map(
+        (_user) => _user.secondaryText
+      );
+
+      updatedApprovedMembers = updatedApprovedMembers.map(
+        (_user) => _user.secondaryText
+      );
+
+      if (updatedPendingApprovers.length == 0) {
+        updatedStatus = "Completed";
+      } else if (
+        updatedPendingApprovers.length > 0 &&
+        updatedApprovedMembers.length > 0
+      ) {
+        updatedStatus = "In Progress";
+      }
+
+      let responseData = {
+        NotAcknowledgedEmails:
+          updatedPendingApprovers.length > 0
+            ? updatedPendingApprovers.join(";") + ";"
+            : "",
+        AcknowledgedEmails:
+          updatedApprovedMembers.length > 0
+            ? updatedApprovedMembers.join(";") + ";"
+            : "",
+        Status: updatedStatus ? updatedStatus : _acknowledgePopup.obj.Status,
+      };
+
+      sp.web.lists
+        .getByTitle("Documents")
+        .items.getById(_acknowledgePopup.obj.ID)
+        .update(responseData)
+        .then(() => {
+          addAcknowlegdementComments(
+            _acknowledgePopup.obj.ID,
+            acknowledgePopup.comments
+          );
+        })
+        .catch((error) => {
+          err(error, "updateFunction");
+        });
+    }
+  };
+
+  const addAcknowlegdementComments = (_docId: number, _comments: string) => {
+    sp.web.lists
+      .getByTitle("HR Document Comments")
+      .items.add({
+        Title: loggedUserEmail,
+        HRDocId: _docId,
+        Comments: _comments,
+      })
+      .then((res) => {
+        setAcknowledgePopup({
+          condition: false,
+          obj: null,
+          isFileOpened: false,
+          comments: "",
+          commentsValidation: false,
+          overAllValidation: false,
+        });
+        settableLoader(true);
+        getManagers();
+      })
+      .catch((error) => {
+        err(error, "addAcknowlegdementComments");
+      });
+  };
 
   // useEffect
   React.useEffect(() => {
     settableLoader(true);
-    getDatafromLibrary();
+    getManagers();
   }, []);
 
   return (
@@ -1098,7 +1441,7 @@ function Dashboard(props: any) {
                   <div>
                     <Label>File Name</Label>
                     <SearchBox
-                      placeholder="search"
+                      placeholder="Search File Name"
                       styles={searchStyle}
                       value={FilterKeys.Title}
                       onChange={(e, text) => {
@@ -1121,7 +1464,7 @@ function Dashboard(props: any) {
                   <div>
                     <Label>Signatories</Label>
                     <SearchBox
-                      placeholder="search"
+                      placeholder="Search Signatories"
                       styles={searchStyle}
                       value={FilterKeys.Approvers}
                       onChange={(e, text) => {
@@ -1142,14 +1485,9 @@ function Dashboard(props: any) {
                     />
                   </div>
                   <div style={{ marginTop: 28 }}>
-                    <IconButton
-                      iconProps={resetIcon}
-                      className={styles.iconBtn}
-                      styles={{
-                        rootHovered: {
-                          backgroundColor: "none",
-                        },
-                      }}
+                    <Icon
+                      iconName="Refresh"
+                      className={iconStyleClass.refreshIcon}
                       onClick={() => {
                         reset();
                       }}
@@ -1164,16 +1502,18 @@ function Dashboard(props: any) {
               addFile(file);
             }}
           /> */}
-                <PrimaryButton
-                  text="New"
-                  className={styles.newBtn}
-                  onClick={() => {
-                    setHideModal(true);
-                    valueObj.Id = 0;
-                    valueObj.type = "new";
-                    setValueObj({ ...valueObj });
-                  }}
-                />
+                {isLoggedUserManager ? (
+                  <PrimaryButton
+                    text="New"
+                    className={styles.newBtn}
+                    onClick={() => {
+                      setHideModal(true);
+                      valueObj.Id = 0;
+                      valueObj.type = "new";
+                      setValueObj({ ...valueObj });
+                    }}
+                  />
+                ) : null}
               </div>
               {/* filter section ends */}
 
@@ -1214,251 +1554,375 @@ function Dashboard(props: any) {
           </div>
 
           {/*  new and view modal section */}
-          <Modal
-            styles={valueObj.type == "new" ? newmodalDesign : editmodalDesign}
-            isOpen={showModal}
-          >
-            <div className={styles.modalCustomDesign}>
-              <div className={styles.header}>
-                {valueObj.type == "new" ? (
-                  <h2>New Document</h2>
-                ) : (
-                  <h2>View Document</h2>
-                )}
-              </div>
-
-              {/* details section */}
-              {/* title */}
-              <div
-                style={
-                  valueObj.type == "new" ? { height: 300 } : { height: 284 }
-                }
-              >
-                <div
-                  className={styles.detailsSection}
-                  style={{ alignItems: "center" }}
-                >
-                  <div>
-                    <Label>
-                      Title <span style={{ color: "red" }}>*</span>
-                    </Label>
-                  </div>
-                  <div style={{ width: 0 }}>:</div>
-                  <TextField
-                    styles={textFieldstyle}
-                    value={valueObj.Title}
-                    readOnly={valueObj.type == "edit"}
-                    onChange={(name) => {
-                      valueObj.Valid = "";
-                      setValueObj(valueObj);
-                      Onchangehandler("Title", name.target["value"]);
-                    }}
-                  ></TextField>
-                </div>
-                {/* file */}
-                <div
-                  className={styles.detailsSection}
-                  style={{ alignItems: "center" }}
-                >
-                  <div>
-                    <Label>
-                      File <span style={{ color: "red" }}>*</span>
-                    </Label>
-                  </div>
-                  <div>:</div>
+          {showModal ? (
+            <Modal
+              styles={valueObj.type == "new" ? newmodalDesign : editmodalDesign}
+              isOpen={showModal}
+            >
+              <div className={styles.modalCustomDesign}>
+                <div className={styles.header}>
                   {valueObj.type == "new" ? (
-                    <>
-                      <div>
-                        <input
-                          style={{ margin: "0 10px" }}
-                          className={styles.fileStyle}
-                          type="file"
-                          id="uploadFile"
-                          // disabled={valueObj.type == "edit"}
-                          onChange={(file) => {
-                            valueObj.Valid = "";
-                            setValueObj(valueObj);
-                            Onchangehandler("File", file.target["files"][0]);
-                          }}
-                        />
-                      </div>
-                    </>
-                  ) : null}
-                  {valueObj.Id != 0 && (
-                    <>
-                      <div style={{ width: 290, margin: "0 10px" }}>
-                        {/* <Label style={{ width: 105 }}></Label> */}
-                        <a
-                          target="_blank"
-                          data-interception="off"
-                          href={valueObj.FileLink}
-                        >
-                          {valueObj.FileName}
-                        </a>
-                      </div>
-                    </>
+                    <h2>New Document</h2>
+                  ) : (
+                    <h2>View Document</h2>
                   )}
                 </div>
-                {/* {valueObj.Id != 0 && (
-              <>
-                <div className={styles.detailsSection}>
-                  <Label style={{ width: 105 }}></Label>
-                  <a
-                    style={{ width: 290 }}
-                    target="_blank"
-                    data-interception="off"
-                    href={valueObj.FileLink}
-                  >
-                    {valueObj.FileName}
-                  </a>
-                </div>
-              </>
-            )} */}
 
-                {/* people picker */}
-                <div className={styles.detailsSection}>
-                  <div>
-                    <Label>
-                      Signatories <span style={{ color: "red" }}>*</span>
-                    </Label>
+                {/* details section */}
+                {/* title */}
+                <div>
+                  <div
+                    className={styles.detailsSection}
+                    style={{ alignItems: "center" }}
+                  >
+                    <div>
+                      <Label>
+                        Title <span style={{ color: "red" }}>*</span>
+                      </Label>
+                    </div>
+                    <div style={{ width: 0 }}>:</div>
+                    <TextField
+                      styles={textFieldstyle}
+                      value={valueObj.Title}
+                      readOnly={valueObj.type == "edit"}
+                      onChange={(name) => {
+                        valueObj.Valid = "";
+                        setValueObj(valueObj);
+                        Onchangehandler("Title", name.target["value"]);
+                      }}
+                    ></TextField>
                   </div>
-                  <div>:</div>
-                  <NormalPeoplePicker
-                    styles={
-                      valueObj.type == "edit"
-                        ? peoplePickerDisabledStyle
-                        : peoplePickerStyle
+                  {/* file */}
+                  <div
+                    className={styles.detailsSection}
+                    style={{ alignItems: "center" }}
+                  >
+                    <div>
+                      <Label>
+                        File <span style={{ color: "red" }}>*</span>
+                      </Label>
+                    </div>
+                    <div>:</div>
+                    {valueObj.type == "new" ? (
+                      <>
+                        <div>
+                          <input
+                            style={{ margin: "0 10px" }}
+                            className={styles.fileStyle}
+                            type="file"
+                            id="uploadFile"
+                            // disabled={valueObj.type == "edit"}
+                            onChange={(file) => {
+                              valueObj.Valid = "";
+                              setValueObj(valueObj);
+                              Onchangehandler("File", file.target["files"][0]);
+                            }}
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                    {valueObj.Id != 0 && (
+                      <>
+                        <div style={{ width: 290, margin: "0 10px" }}>
+                          {/* <Label style={{ width: 105 }}></Label> */}
+                          <a
+                            target="_blank"
+                            data-interception="off"
+                            href={valueObj.FileLink}
+                          >
+                            {valueObj.FileName}
+                          </a>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {/* people picker */}
+                  <div className={styles.detailsSection}>
+                    <div>
+                      <Label>
+                        Signatories <span style={{ color: "red" }}>*</span>
+                      </Label>
+                    </div>
+                    <div>:</div>
+                    <NormalPeoplePicker
+                      styles={
+                        valueObj.type == "edit"
+                          ? peoplePickerDisabledStyle
+                          : peoplePickerStyle
+                      }
+                      onResolveSuggestions={GetUserDetails}
+                      itemLimit={10}
+                      disabled={valueObj.type == "edit"}
+                      selectedItems={valueObj.Mail}
+                      onChange={(selectedUser) => {
+                        valueObj.Valid = "";
+                        setValueObj(valueObj);
+                        Onchangehandler("Mail", selectedUser);
+                      }}
+                    />
+                  </div>
+
+                  {/* people picker */}
+                  <div className={styles.detailsSection}>
+                    <div>
+                      <Label>
+                        Excluded <span style={{ color: "red" }}>*</span>
+                      </Label>
+                    </div>
+                    <div>:</div>
+                    <NormalPeoplePicker
+                      styles={
+                        valueObj.type == "edit"
+                          ? peoplePickerDisabledStyle
+                          : peoplePickerStyle
+                      }
+                      onResolveSuggestions={GetUserDetailsUserOnly}
+                      itemLimit={10}
+                      disabled={valueObj.type == "edit"}
+                      selectedItems={valueObj.Excluded}
+                      onChange={(selectedUser) => {
+                        valueObj.Valid = "";
+                        setValueObj(valueObj);
+                        Onchangehandler("Excluded", selectedUser);
+                      }}
+                    />
+                  </div>
+
+                  {/* comments section */}
+                  <div className={styles.detailsSection}>
+                    <div>
+                      <Label>Comments</Label>
+                    </div>
+                    <div style={{ width: 0 }}>:</div>
+                    <TextField
+                      styles={multiLinetextFieldstyle}
+                      style={{ resize: "none" }}
+                      value={valueObj.Comments}
+                      multiline
+                      readOnly={valueObj.type == "edit"}
+                      onChange={(name) => {
+                        // valueObj.Valid = "";
+                        // setValueObj(valueObj);
+                        Onchangehandler("Comments", name.target["value"]);
+                      }}
+                    ></TextField>
+                  </div>
+                </div>
+
+                {/* btn section */}
+                <div className={styles.btnSection}>
+                  {valueObj.Valid && (
+                    <div>
+                      <Label style={{ color: "red", marginRight: 10 }}>
+                        {valueObj.Valid}
+                      </Label>
+                    </div>
+                  )}
+
+                  <PrimaryButton
+                    className={styles.cancelBtn}
+                    style={
+                      valueObj.type == "new"
+                        ? { marginRight: 15 }
+                        : { marginRight: 0 }
                     }
-                    onResolveSuggestions={GetUserDetails}
-                    itemLimit={10}
-                    disabled={valueObj.type == "edit"}
-                    selectedItems={valueObj.Mail}
-                    onChange={(selectedUser) => {
-                      valueObj.Valid = "";
-                      setValueObj(valueObj);
-                      Onchangehandler("Mail", selectedUser);
+                    text="Cancel"
+                    onClick={() => {
+                      if (!onSubmitLoader) {
+                        setHideModal(false);
+                        setOnSubmitLoader(false);
+                        setValueObj(getDataObj);
+                      }
                     }}
                   />
-                </div>
-
-                {/* comments section */}
-                <div className={styles.detailsSection}>
-                  <div>
-                    <Label>Comments</Label>
-                  </div>
-                  <div style={{ width: 0 }}>:</div>
-                  <TextField
-                    styles={multiLinetextFieldstyle}
-                    style={{ resize: "none" }}
-                    value={valueObj.Comments}
-                    multiline
-                    readOnly={valueObj.type == "edit"}
-                    onChange={(name) => {
-                      // valueObj.Valid = "";
-                      // setValueObj(valueObj);
-                      Onchangehandler("Comments", name.target["value"]);
-                    }}
-                  ></TextField>
+                  {valueObj.type == "new" ? (
+                    <>
+                      <PrimaryButton
+                        className={styles.submitBtn}
+                        color="primary"
+                        onClick={() => {
+                          if (!onSubmitLoader) {
+                            setOnSubmitLoader(true);
+                            validation();
+                            // addFile();
+                          }
+                        }}
+                      >
+                        {onSubmitLoader ? (
+                          <Spinner styles={spinnerStyle} />
+                        ) : (
+                          "Submit"
+                        )}
+                      </PrimaryButton>
+                    </>
+                  ) : null}
                 </div>
               </div>
-
-              {/* btn section */}
-              <div className={styles.btnSection}>
-                {valueObj.Valid && (
-                  <div>
-                    <Label style={{ color: "red", marginRight: 10 }}>
-                      {valueObj.Valid}
-                    </Label>
-                  </div>
-                )}
-
-                <PrimaryButton
-                  className={styles.cancelBtn}
-                  style={
-                    valueObj.type == "new"
-                      ? { marginRight: 15 }
-                      : { marginRight: 0 }
-                  }
-                  text="Cancel"
-                  onClick={() => {
-                    if (!onSubmitLoader) {
-                      setHideModal(false);
-                      setOnSubmitLoader(false);
-                      setValueObj(getDataObj);
-                    }
+            </Modal>
+          ) : null}
+          {/* Acknowledgement Popup */}
+          {acknowledgePopup.condition ? (
+            <Modal
+              isOpen={acknowledgePopup.condition}
+              styles={{
+                main: {
+                  width: "30%",
+                  borderRadius: 5,
+                },
+              }}
+            >
+              <div className={styles.ackPopup}>
+                <div
+                  style={{
+                    textAlign: "center",
+                    color: "#f68413",
+                    fontSize: 20,
+                    fontWeight: 700,
+                    margin: "14px 0px",
+                    height: "auto",
                   }}
-                />
-                {valueObj.type == "new" ? (
-                  <>
-                    <PrimaryButton
-                      className={styles.submitBtn}
-                      color="primary"
+                >
+                  Acknowledgement
+                </div>
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      margin: "20px 0px",
+                    }}
+                  >
+                    <Label styles={popupLabelStyle}>File</Label>
+                    <Label style={{ width: "2%" }}>:</Label>
+                    <Label
+                      styles={{
+                        root: {
+                          width: "75%",
+                          fontSize: 16,
+                        },
+                      }}
                       onClick={() => {
-                        if (!onSubmitLoader) {
-                          setOnSubmitLoader(true);
-                          validation();
-                          // addFile();
-                        }
+                        let _acknowledgePopup = { ...acknowledgePopup };
+                        _acknowledgePopup.isFileOpened = true;
+                        setAcknowledgePopup({ ..._acknowledgePopup });
                       }}
                     >
-                      {onSubmitLoader ? (
-                        <Spinner styles={spinnerStyle} />
-                      ) : (
-                        "Submit"
-                      )}
-                    </PrimaryButton>
-                  </>
-                ) : null}
+                      <a
+                        href={acknowledgePopup.obj.Link}
+                        target="_blank"
+                        data-interception="off"
+                      >
+                        {acknowledgePopup.obj.FileName}
+                      </a>
+                    </Label>
+                  </div>
+                  {acknowledgePopup.isFileOpened ? (
+                    <div style={{ display: "flex" }}>
+                      <Label styles={popupLabelStyle}>Comments</Label>
+                      <Label style={{ width: "2%" }}>:</Label>
+                      <TextField
+                        multiline={true}
+                        resizable={false}
+                        rows={3}
+                        value={acknowledgePopup.comments}
+                        styles={
+                          acknowledgePopup.commentsValidation
+                            ? popupTextFieldErrorStyle
+                            : popupTextFieldStyle
+                        }
+                        onChange={(e, value) => {
+                          acknowledgePopupOnChangeHandler("comments", value);
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+                <div className={styles.ackPopupButtonSection}>
+                  {acknowledgePopup.isFileOpened &&
+                  acknowledgePopup.overAllValidation ? (
+                    <Label style={{ color: "#f00" }}>
+                      * Comments is mandatory.
+                    </Label>
+                  ) : null}
+                  {acknowledgePopup.isFileOpened ? (
+                    <button
+                      className={styles.acknowledgeBtn}
+                      onClick={() => {
+                        acknowledgeValidation();
+                      }}
+                    >
+                      Acknowledge
+                    </button>
+                  ) : null}
+                  <button
+                    className={styles.closeBtn}
+                    onClick={() => {
+                      setAcknowledgePopup({
+                        condition: false,
+                        obj: null,
+                        isFileOpened: false,
+                        comments: "",
+                        commentsValidation: false,
+                        overAllValidation: false,
+                      });
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
-            </div>
-          </Modal>
+            </Modal>
+          ) : null}
           {/* Delete Modal */}
-          <Modal isOpen={showDelModal.condition} styles={deleteModalStyle}>
-            <div className={styles.delModal}>
-              <h2 style={{ textAlign: "center", color: "#f68413" }}>Delete</h2>
-              <div>
-                {" "}
-                <h3 style={{ textAlign: "center" }}>
-                  Are you sure want to Delete?
-                </h3>
+          {showDelModal.condition ? (
+            <Modal isOpen={showDelModal.condition} styles={deleteModalStyle}>
+              <div className={styles.delModal}>
+                <h2 style={{ textAlign: "center", color: "#f68413" }}>
+                  Delete
+                </h2>
+                <div>
+                  <h3 style={{ textAlign: "center" }}>
+                    Are you sure want to Delete?
+                  </h3>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <PrimaryButton
+                    style={{
+                      backgroundColor: "#36b04b",
+                      color: "#fff",
+                      border: "none",
+                    }}
+                    onClick={() => {
+                      if (!onSubmitLoader) {
+                        setOnSubmitLoader(true);
+                        deleteFunction(showDelModal.targetID);
+                      }
+                    }}
+                  >
+                    {onSubmitLoader ? <Spinner styles={spinnerStyle} /> : "Yes"}
+                  </PrimaryButton>
+                  <PrimaryButton
+                    style={{
+                      backgroundColor: "#b80000",
+                      color: "#fff",
+                      border: "none",
+                    }}
+                    onClick={() => {
+                      if (!onSubmitLoader) {
+                        setOnSubmitLoader(false);
+                        setHideDelModal({ condition: false, targetID: null });
+                      }
+                    }}
+                  >
+                    No
+                  </PrimaryButton>
+                </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <PrimaryButton
-                  style={{
-                    backgroundColor: "#36b04b",
-                    color: "#fff",
-                    border: "none",
-                  }}
-                  onClick={() => {
-                    if (!onSubmitLoader) {
-                      setOnSubmitLoader(true);
-                      deleteFunction(showDelModal.targetID);
-                    }
-                  }}
-                >
-                  {onSubmitLoader ? <Spinner styles={spinnerStyle} /> : "Yes"}
-                </PrimaryButton>
-                <PrimaryButton
-                  style={{
-                    backgroundColor: "#b80000",
-                    color: "#fff",
-                    border: "none",
-                  }}
-                  onClick={() => {
-                    if (!onSubmitLoader) {
-                      setOnSubmitLoader(false);
-                      setHideDelModal({ condition: false, targetID: null });
-                    }
-                  }}
-                >
-                  No
-                </PrimaryButton>
-              </div>
-            </div>
-          </Modal>
+            </Modal>
+          ) : null}
         </div>
       )}
     </ThemeProvider>
   );
-}
+};
 export default Dashboard;
