@@ -1810,7 +1810,7 @@ const Dashboard = (props: any): JSX.Element => {
                         target="_blank"
                         data-interception="off"
                       >
-                        {acknowledgePopup.obj.FileName}
+                        {acknowledgePopup.obj.Title}
                       </a>
                     </Label>
                   </div>
