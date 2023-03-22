@@ -207,7 +207,12 @@ const Dashboard = (props: any): JSX.Element => {
             href={item.Link}
             target="_blank"
             data-interception="off"
-            style={{ color: "#000", textDecoration: "none", fontSize: 13 }}
+            style={{
+              color: "#000",
+              textDecoration: "none",
+              fontSize: 13,
+              marginTop: 5,
+            }}
           >
             {item.Title}
           </a>
@@ -260,7 +265,7 @@ const Dashboard = (props: any): JSX.Element => {
         _onColumnClick(ev, column);
       },
       onRender: (data: any) => (
-        <div style={{ fontSize: 13, color: "#000" }}>
+        <div style={{ fontSize: 13, color: "#000", marginTop: 5 }}>
           {moment(data.created).format("DD/MM/YYYY")}
         </div>
       ),
@@ -560,6 +565,7 @@ const Dashboard = (props: any): JSX.Element => {
       onRender: (item: IItems) => (
         <div>
           <Icon
+            title="View Details"
             iconName="View"
             className={iconStyleClass.viewIcon}
             onClick={(): void => {
@@ -580,6 +586,7 @@ const Dashboard = (props: any): JSX.Element => {
             }}
           />
           <Icon
+            title="Acknowlodgement"
             iconName={
               item.Status != "Completed" &&
               item.PendingMembers.some(
@@ -616,6 +623,7 @@ const Dashboard = (props: any): JSX.Element => {
           />
           {isLoggedUserManager ? (
             <Icon
+              title="Delete"
               iconName="Delete"
               className={iconStyleClass.deleteIcon}
               onClick={(): void => {
