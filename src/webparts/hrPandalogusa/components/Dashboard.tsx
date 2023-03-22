@@ -68,14 +68,24 @@ const myTheme = createTheme({
   },
 });
 
+interface IPeople {
+  key: number;
+  imageUrl: string;
+  isGroup: boolean;
+  isValid: boolean;
+  ID: number;
+  secondaryText: string;
+  text: string;
+}
+
 interface IItems {
   ID: number;
   Title: string;
   Status: string;
-  PendingMembers: any[];
-  ApprovedMembers: any[];
-  Signatories: any[];
-  Excluded: any[];
+  PendingMembers: IPeople[];
+  ApprovedMembers: IPeople[];
+  Signatories: IPeople[];
+  Excluded: IPeople[];
   Link: string;
   created: string;
   // PendingMembersID: number[];
@@ -86,7 +96,25 @@ interface IItems {
   Comments: string;
   FileName: string;
   IsDeleted: boolean;
-  Uploader: {};
+  Uploader: IPeople;
+}
+interface IDropDown {
+  key: string;
+  text: string;
+}
+interface IDropDownOptions {
+  managerViewOptns: IDropDown[];
+  usersViewOptns: IDropDown[];
+  status: IDropDown[];
+}
+
+interface IFilters {
+  Title: string;
+  Status: string;
+  Approvers: string;
+  submittedDate: any;
+  Uploader: string;
+  View: string;
 }
 
 let sortData = [];
@@ -101,11 +129,13 @@ const Dashboard = (props: any): JSX.Element => {
   const loggedUserEmail: string = props.spcontext.pageContext.user.email;
 
   // variables
-  let filterKeys = {
+  let filterKeys: IFilters = {
     Title: "",
     Status: "All",
     Approvers: "",
     submittedDate: null,
+    Uploader: "",
+    View: "All Documents",
   };
   let getDataObj = {
     type: "",
@@ -119,13 +149,47 @@ const Dashboard = (props: any): JSX.Element => {
     FileLink: "",
     Comments: "",
   };
-  //   status variable
-  const statusOption: IDropdownOption[] = [
-    { key: "All", text: "All" },
-    { key: "Pending", text: "Pending" },
-    { key: "In Progress", text: "In Progress" },
-    { key: "Completed", text: "Completed" },
-  ];
+
+  const dropDownOptions: IDropDownOptions = {
+    managerViewOptns: [
+      {
+        key: "All Documents",
+        text: "All Documents",
+      },
+      {
+        key: "My Uploads",
+        text: "My Uploads",
+      },
+      {
+        key: "My Acknowledgement",
+        text: "My Acknowledgement",
+      },
+      {
+        key: "Pending Acknowledgement",
+        text: "Pending Acknowledgement",
+      },
+    ],
+    usersViewOptns: [
+      {
+        key: "All Documents",
+        text: "All Documents",
+      },
+      {
+        key: "My Acknowledgement",
+        text: "My Acknowledgement",
+      },
+      {
+        key: "Pending Acknowledgement",
+        text: "Pending Acknowledgement",
+      },
+    ],
+    status: [
+      { key: "All", text: "All" },
+      { key: "Pending", text: "Pending" },
+      { key: "In Progress", text: "In Progress" },
+      { key: "Completed", text: "Completed" },
+    ],
+  };
   //   detail list  col variable
   const _columns: IColumn[] = [
     {
@@ -133,7 +197,7 @@ const Dashboard = (props: any): JSX.Element => {
       name: "File Name",
       fieldName: "Title",
       minWidth: 200,
-      maxWidth: 350,
+      maxWidth: 400,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
@@ -312,7 +376,6 @@ const Dashboard = (props: any): JSX.Element => {
         );
       },
     },
-
     {
       key: "column6",
       name: "Acknowledged",
@@ -492,7 +555,7 @@ const Dashboard = (props: any): JSX.Element => {
     {
       key: "column8",
       name: "Action",
-      minWidth: 70,
+      minWidth: 100,
       maxWidth: 100,
       onRender: (item: IItems) => (
         <div>
@@ -517,7 +580,14 @@ const Dashboard = (props: any): JSX.Element => {
             }}
           />
           <Icon
-            iconName="DocumentApproval"
+            iconName={
+              item.Status != "Completed" &&
+              item.PendingMembers.some(
+                (user) => user.secondaryText == loggedUserEmail
+              )
+                ? "InsertSignatureLine"
+                : "DocumentApproval"
+            }
             className={
               item.Status != "Completed" &&
               item.PendingMembers.some(
@@ -561,7 +631,7 @@ const Dashboard = (props: any): JSX.Element => {
 
   const searchStyle = {
     root: {
-      width: "200px",
+      width: 220,
       marginRight: 20,
       "&::after": {
         borderColor: "rgb(96, 94, 92)",
@@ -570,7 +640,7 @@ const Dashboard = (props: any): JSX.Element => {
   };
   const dropdownStyles: Partial<IDropdownStyles> = {
     dropdown: {
-      width: 200,
+      width: 220,
       marginRight: 20,
       "&:focus::after": {
         borderColor: "rgb(96, 94, 92)",
@@ -827,7 +897,7 @@ const Dashboard = (props: any): JSX.Element => {
   // State variable
   const [nofillterData, setnofillterData] = useState<IItems[]>([]);
   const [masterData, setMasterData] = useState<IItems[]>([]);
-  const [FilterKeys, setFilterKeys] = useState(filterKeys);
+  const [FilterKeys, setFilterKeys] = useState<IFilters>(filterKeys);
   const [displayData, setdisplayData] = useState([]);
   const [valueObj, setValueObj] = useState(getDataObj);
   const [showModal, setHideModal] = useState(false);
@@ -870,14 +940,23 @@ const Dashboard = (props: any): JSX.Element => {
             : false;
 
         isLoggedUserManager = _isManager;
-        getDatafromLibrary();
+
+        let _filterKeys = { ...FilterKeys };
+
+        _filterKeys.View = _isManager
+          ? "All Documents"
+          : "Pending Acknowledgement";
+
+        setFilterKeys({ ..._filterKeys });
+
+        getDatafromLibrary(_filterKeys);
       })
       .catch((error) => {
         err(error, "getManagers");
       });
   };
   // get Document from Library
-  function getDatafromLibrary() {
+  function getDatafromLibrary(filterKeys: IFilters) {
     // settableLoader(true);
     const getDataArray: IItems[] = [];
     sp.web
@@ -894,7 +973,7 @@ const Dashboard = (props: any): JSX.Element => {
         let _Excluded = [];
         let _uploader = [];
 
-        value.forEach((data) => {
+        value.forEach((data, index) => {
           _uploader = allPeoples.filter((users) => {
             return users.secondaryText == data.Author.Email;
           });
@@ -975,6 +1054,28 @@ const Dashboard = (props: any): JSX.Element => {
         sortData = [...filteredData];
         setnofillterData(getDataArray);
         setMasterData(filteredData);
+
+        if (filterKeys.View != "All Documents") {
+          if (filterKeys.View == "My Uploads") {
+            filteredData = filteredData.filter(
+              (_value: IItems) =>
+                _value.Uploader != null &&
+                _value.Uploader.secondaryText == loggedUserEmail
+            );
+          } else if (filterKeys.View == "My Acknowledgement") {
+            filteredData = filteredData.filter((_value: IItems) =>
+              _value.Signatories.some(
+                (people: IPeople) => people.secondaryText == loggedUserEmail
+              )
+            );
+          } else if (filterKeys.View == "Pending Acknowledgement") {
+            filteredData = filteredData.filter((_value: IItems) =>
+              _value.PendingMembers.some(
+                (people: IPeople) => people.secondaryText == loggedUserEmail
+              )
+            );
+          }
+        }
         setdisplayData(filteredData);
         paginateFunction(1, filteredData);
         settableLoader(false);
@@ -985,10 +1086,11 @@ const Dashboard = (props: any): JSX.Element => {
   }
 
   //  search filter
-  function filterFunction(key, val) {
-    let tempArr = masterData;
-    let tempFilter = FilterKeys;
+  function filterFunction(key: string, val: any): void {
+    let tempArr: IItems[] = masterData;
+    let tempFilter: IFilters = FilterKeys;
     tempFilter[key] = val;
+
     if (tempFilter.Status != "All") {
       tempArr = tempArr.filter((arr) => {
         return arr.Status == tempFilter.Status;
@@ -1006,6 +1108,16 @@ const Dashboard = (props: any): JSX.Element => {
         );
       });
     }
+    if (tempFilter.Uploader) {
+      tempArr = tempArr.filter((arr: IItems) => {
+        return (
+          arr.Uploader != null &&
+          arr.Uploader.text
+            .toLowerCase()
+            .includes(tempFilter.Uploader.toLowerCase())
+        );
+      });
+    }
 
     if (tempFilter.submittedDate != null) {
       tempArr = tempArr.filter((arr) => {
@@ -1014,6 +1126,28 @@ const Dashboard = (props: any): JSX.Element => {
           moment(tempFilter.submittedDate).format("DD/MM/YYYY")
         );
       });
+    }
+
+    if (tempFilter.View != "All Documents") {
+      if (tempFilter.View == "My Uploads") {
+        tempArr = tempArr.filter(
+          (_value: IItems) =>
+            _value.Uploader != null &&
+            _value.Uploader.secondaryText == loggedUserEmail
+        );
+      } else if (tempFilter.View == "My Acknowledgement") {
+        tempArr = tempArr.filter((_value: IItems) =>
+          _value.Signatories.some(
+            (people: IPeople) => people.secondaryText == loggedUserEmail
+          )
+        );
+      } else if (tempFilter.View == "Pending Acknowledgement") {
+        tempArr = tempArr.filter((_value: IItems) =>
+          _value.PendingMembers.some(
+            (people: IPeople) => people.secondaryText == loggedUserEmail
+          )
+        );
+      }
     }
     setdisplayData([...tempArr]);
     setFilterKeys({ ...tempFilter });
@@ -1450,10 +1584,32 @@ const Dashboard = (props: any): JSX.Element => {
                     />
                   </div>
                   <div>
+                    <Label>Uploader</Label>
+                    <SearchBox
+                      placeholder="Search Uploader"
+                      styles={searchStyle}
+                      value={FilterKeys.Uploader}
+                      onChange={(e, text) => {
+                        filterFunction("Uploader", text);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Submitted Date</Label>
+                    <DatePicker
+                      placeholder="Select a date..."
+                      styles={datePickerStyle}
+                      formatDate={dateformater}
+                      value={FilterKeys.submittedDate}
+                      onSelectDate={(date) => {
+                        filterFunction("submittedDate", date);
+                      }}
+                    />
+                  </div>
+                  <div>
                     <Label>Status</Label>
                     <Dropdown
-                      placeholder="All"
-                      options={statusOption}
+                      options={dropDownOptions.status}
                       styles={dropdownStyles}
                       selectedKey={FilterKeys.Status}
                       onChange={(e, option) => {
@@ -1473,17 +1629,21 @@ const Dashboard = (props: any): JSX.Element => {
                     />
                   </div>
                   <div>
-                    <Label>Submitted Date</Label>
-                    <DatePicker
-                      placeholder="Select a date..."
-                      styles={datePickerStyle}
-                      formatDate={dateformater}
-                      value={FilterKeys.submittedDate}
-                      onSelectDate={(date) => {
-                        filterFunction("submittedDate", date);
+                    <Label>View</Label>
+                    <Dropdown
+                      options={
+                        isLoggedUserManager
+                          ? dropDownOptions.managerViewOptns
+                          : dropDownOptions.usersViewOptns
+                      }
+                      styles={dropdownStyles}
+                      selectedKey={FilterKeys.View}
+                      onChange={(e, option: IDropDown) => {
+                        filterFunction("View", option["key"]);
                       }}
                     />
                   </div>
+
                   <div style={{ marginTop: 28 }}>
                     <Icon
                       iconName="Refresh"
@@ -1625,13 +1785,22 @@ const Dashboard = (props: any): JSX.Element => {
                       <>
                         <div style={{ width: 290, margin: "0 10px" }}>
                           {/* <Label style={{ width: 105 }}></Label> */}
-                          <a
-                            target="_blank"
-                            data-interception="off"
-                            href={valueObj.FileLink}
+                          <Label
+                            styles={{
+                              root: {
+                                width: "100% !important",
+                                fontSize: 16,
+                              },
+                            }}
                           >
-                            {valueObj.FileName}
-                          </a>
+                            <a
+                              target="_blank"
+                              data-interception="off"
+                              href={valueObj.FileLink}
+                            >
+                              {valueObj.FileName}
+                            </a>
+                          </Label>
                         </div>
                       </>
                     )}
@@ -1840,6 +2009,11 @@ const Dashboard = (props: any): JSX.Element => {
                   acknowledgePopup.overAllValidation ? (
                     <Label style={{ color: "#f00" }}>
                       * Comments is mandatory.
+                    </Label>
+                  ) : null}
+                  {!acknowledgePopup.isFileOpened ? (
+                    <Label style={{ color: "#f00" }}>
+                      Click on the file to acknowledge
                     </Label>
                   ) : null}
                   {acknowledgePopup.isFileOpened ? (
