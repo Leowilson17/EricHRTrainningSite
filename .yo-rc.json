@@ -1,7 +1,7 @@
 {
   "@microsoft/generator-sharepoint": {
     "plusBeta": false,
-    "isCreatingSolution": true,
+    "isCreatingSolution": false,
     "version": "1.14.0",
     "libraryName": "hr-pandalogusa",
     "libraryId": "5ae7fe58-7511-42a7-a352-3bc3ba64549d",
