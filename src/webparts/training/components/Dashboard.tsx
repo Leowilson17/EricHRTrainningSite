@@ -5,7 +5,7 @@ import { graph } from "@pnp/graph";
 import "@pnp/graph/users";
 import "@pnp/graph/groups";
 import * as moment from "moment";
-import styles from "./HrPandalogusa.module.scss";
+import styles from "./Training.module.scss";
 import {
   Label,
   SearchBox,
@@ -80,6 +80,7 @@ interface IPeople {
 
 interface IItems {
   ID: number;
+  AcknowledgementType: string;
   Title: string;
   Status: string;
   PendingMembers: IPeople[];
@@ -87,6 +88,7 @@ interface IItems {
   Signatories: IPeople[];
   Excluded: IPeople[];
   Link: string;
+  Quiz: string;
   created: string;
   // PendingMembersID: number[];
   // approvedMembersID: number[];
@@ -127,8 +129,8 @@ const Dashboard = (props: any): JSX.Element => {
   const currentWebSite: string[] =
     props.spcontext.pageContext.web.absoluteUrl.split("/");
 
-  const HRDocName: string = "HRDocuments";
-  const HRCommentsName: string = "HRDocumentComments";
+  const HRDocName: string = "TrainingHub";
+  const HRCommentsName: string = "TrainingComments";
   const url: string = `/sites/${
     currentWebSite[currentWebSite.length - 1]
   }/${HRDocName}`;
@@ -152,6 +154,7 @@ const Dashboard = (props: any): JSX.Element => {
     Title: "",
     Mail: [],
     Excluded: [],
+    Quiz: "",
     File: undefined,
     FileName: "",
     Valid: "",
@@ -196,6 +199,9 @@ const Dashboard = (props: any): JSX.Element => {
       { key: "All", text: "All" },
       { key: "Pending", text: "Pending" },
       { key: "In Progress", text: "In Progress" },
+
+      { key: "Quiz Pending", text: "Quiz Pending" },
+      { key: "Quiz In Progress", text: "Quiz In Progress" },
       { key: "Completed", text: "Completed" },
     ],
   };
@@ -296,9 +302,10 @@ const Dashboard = (props: any): JSX.Element => {
         );
         return (
           <>
-            {item.Status == "Pending" ? (
+            {item.Status == "Pending" || item.Status == "Quiz Pending" ? (
               <div className={statusDesign.Pending}>{item.Status}</div>
-            ) : item.Status == "In Progress" ? (
+            ) : item.Status == "In Progress" ||
+              item.Status == "Quiz In Progress" ? (
               <div className={statusDesign.InProgress}>
                 {item.Status} | {completionPercentage}%
               </div>
@@ -594,6 +601,7 @@ const Dashboard = (props: any): JSX.Element => {
                 Mail: item.Signatories,
                 Excluded: item.Excluded,
                 File: {},
+                Quiz: item.Quiz,
                 FileName: item.Title,
                 Valid: "",
                 FileLink: item.Link,
@@ -1006,35 +1014,49 @@ const Dashboard = (props: any): JSX.Element => {
         let _uploader = [];
 
         value.forEach((data, index) => {
+          let _NotAcknowledgedEmails = !data.ListItemAllFields[
+            "NotAcknowledgedEmails"
+          ]
+            ? data.ListItemAllFields["QuizNotAcknowledgedEmails"]
+            : data.ListItemAllFields["NotAcknowledgedEmails"];
+
+          let _AcknowledgedEmails = !data.ListItemAllFields[
+            "NotAcknowledgedEmails"
+          ]
+            ? data.ListItemAllFields["QuizAcknowledgedEmails"]
+            : data.ListItemAllFields["AcknowledgedEmails"];
+
+          let acknowledgementType: string = !data.ListItemAllFields[
+            "NotAcknowledgedEmails"
+          ]
+            ? "Quiz"
+            : "Document";
+
           _uploader = allPeoples.filter((users) => {
             return users.secondaryText == data.Author.Email;
           });
 
           //pendingMembers
           pendingMembers = [];
-          data.ListItemAllFields["NotAcknowledgedEmails"] &&
-            data.ListItemAllFields["NotAcknowledgedEmails"]
-              .split(";")
-              .forEach((val) => {
-                let tempArr = [];
-                tempArr = props.azureUsers.filter((users) => {
-                  return val && users.secondaryText == val;
-                });
-                if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
+          _NotAcknowledgedEmails &&
+            _NotAcknowledgedEmails.split(";").forEach((val) => {
+              let tempArr = [];
+              tempArr = props.azureUsers.filter((users) => {
+                return val && users.secondaryText == val;
               });
+              if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
+            });
 
           //approvedMembers
           approvedMembers = [];
-          data.ListItemAllFields["AcknowledgedEmails"] &&
-            data.ListItemAllFields["AcknowledgedEmails"]
-              .split(";")
-              .forEach((val) => {
-                let tempArr = [];
-                tempArr = props.azureUsers.filter((users) => {
-                  return val && users.secondaryText == val;
-                });
-                if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
+          _AcknowledgedEmails &&
+            _AcknowledgedEmails.split(";").forEach((val) => {
+              let tempArr = [];
+              tempArr = props.azureUsers.filter((users) => {
+                return val && users.secondaryText == val;
               });
+              if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
+            });
 
           //approvers
           _Signatories = [];
@@ -1061,6 +1083,7 @@ const Dashboard = (props: any): JSX.Element => {
 
           getDataArray.push({
             ID: data.ListItemAllFields["Id"],
+            AcknowledgementType: acknowledgementType,
             Title: data.Name,
             Status: data.ListItemAllFields["Status"],
             PendingMembers: pendingMembers,
@@ -1068,10 +1091,10 @@ const Dashboard = (props: any): JSX.Element => {
             Signatories: _Signatories,
             Excluded: _Excluded,
             Link: data.ServerRelativeUrl,
+            Quiz: data.ListItemAllFields["Quiz"]
+              ? data.ListItemAllFields["Quiz"]
+              : "",
             created: data.TimeCreated,
-            // PendingMembersID: data.ListItemAllFields["PendingApproversId"],
-            // approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
-            // approversID: data.ListItemAllFields["ApproversId"],
             DocVersion: data.ListItemAllFields["DocVersion"]
               ? data.ListItemAllFields["DocVersion"]
               : null,
@@ -1082,6 +1105,7 @@ const Dashboard = (props: any): JSX.Element => {
             Uploader: _uploader.length > 0 ? _uploader[0] : null,
           });
         });
+
         let filteredData = getDataArray.filter((_value) => !_value.IsDeleted);
         sortData = [...filteredData];
         setnofillterData(getDataArray);
@@ -1259,6 +1283,7 @@ const Dashboard = (props: any): JSX.Element => {
       DocVersion: _docVersion,
       Comments: updateData.Comments.trim(),
       FileName: updateData.File["name"],
+      Quiz: updateData.Quiz,
       SignatoriesId: {
         results: approvers,
       },
@@ -1266,6 +1291,7 @@ const Dashboard = (props: any): JSX.Element => {
         results: excludedUsers,
       },
       NotAcknowledgedEmails: pendingApprovers,
+      QuizNotAcknowledgedEmails: updateData.Quiz ? pendingApprovers : "",
       Status: "Pending",
       SubmittedOn: moment().format("YYYY-MM-DD"),
       Year: moment().year().toString(),
@@ -1518,25 +1544,51 @@ const Dashboard = (props: any): JSX.Element => {
       );
 
       if (updatedPendingApprovers.length == 0) {
-        updatedStatus = "Completed";
+        updatedStatus =
+          _acknowledgePopup.obj.AcknowledgementType == "Document" &&
+          _acknowledgePopup.obj.Quiz == ""
+            ? "Completed"
+            : _acknowledgePopup.obj.AcknowledgementType == "Quiz"
+            ? "Completed"
+            : "Quiz Pending";
       } else if (
         updatedPendingApprovers.length > 0 &&
         updatedApprovedMembers.length > 0
       ) {
-        updatedStatus = "In Progress";
+        updatedStatus =
+          _acknowledgePopup.obj.AcknowledgementType == "Quiz"
+            ? "Quiz In Progress"
+            : "In Progress";
       }
 
-      let responseData = {
-        NotAcknowledgedEmails:
-          updatedPendingApprovers.length > 0
-            ? updatedPendingApprovers.join(";") + ";"
-            : "",
-        AcknowledgedEmails:
-          updatedApprovedMembers.length > 0
-            ? updatedApprovedMembers.join(";") + ";"
-            : "",
-        Status: updatedStatus ? updatedStatus : _acknowledgePopup.obj.Status,
-      };
+      let responseData =
+        _acknowledgePopup.obj.AcknowledgementType == "Quiz"
+          ? {
+              QuizNotAcknowledgedEmails:
+                updatedPendingApprovers.length > 0
+                  ? updatedPendingApprovers.join(";") + ";"
+                  : "",
+              QuizAcknowledgedEmails:
+                updatedApprovedMembers.length > 0
+                  ? updatedApprovedMembers.join(";") + ";"
+                  : "",
+              Status: updatedStatus
+                ? updatedStatus
+                : _acknowledgePopup.obj.Status,
+            }
+          : {
+              NotAcknowledgedEmails:
+                updatedPendingApprovers.length > 0
+                  ? updatedPendingApprovers.join(";") + ";"
+                  : "",
+              AcknowledgedEmails:
+                updatedApprovedMembers.length > 0
+                  ? updatedApprovedMembers.join(";") + ";"
+                  : "",
+              Status: updatedStatus
+                ? updatedStatus
+                : _acknowledgePopup.obj.Status,
+            };
 
       sp.web.lists
         .getByTitle(HRDocName)
@@ -1546,6 +1598,7 @@ const Dashboard = (props: any): JSX.Element => {
           addAcknowlegdementComments(
             _acknowledgePopup.obj.ID,
             acknowledgePopup.userName,
+            acknowledgePopup.obj.AcknowledgementType,
             acknowledgePopup.comments
           );
         })
@@ -1558,13 +1611,15 @@ const Dashboard = (props: any): JSX.Element => {
   const addAcknowlegdementComments = (
     _docId: number,
     _userName: string,
+    _acknowledgementType: string,
     _comments: string
   ) => {
     sp.web.lists
       .getByTitle(HRCommentsName)
       .items.add({
         Title: loggedUserEmail,
-        HRDocId: _docId,
+        AcknowledgementType: _acknowledgementType,
+        DocId: _docId,
         UserName: _userName,
         Comments: _comments,
       })
@@ -1605,7 +1660,7 @@ const Dashboard = (props: any): JSX.Element => {
             <div>
               {/* header section starts */}
               {/* <Label className={styles.header}>HR Documents</Label> */}
-              <Label className={styles.header}>HR Policies & Procedures</Label>
+              <Label className={styles.header}>HR Training</Label>
               {/* header section ends */}
 
               {/* filter section stars */}
@@ -1772,8 +1827,8 @@ const Dashboard = (props: any): JSX.Element => {
                 </div>
 
                 {/* details section */}
-                {/* title */}
                 <div>
+                  {/* title */}
                   <div
                     className={styles.detailsSection}
                     style={{ alignItems: "center" }}
@@ -1898,6 +1953,27 @@ const Dashboard = (props: any): JSX.Element => {
                     />
                   </div>
 
+                  {/* Quiz Section */}
+                  <div
+                    className={styles.detailsSection}
+                    style={{ alignItems: "center" }}
+                  >
+                    <div>
+                      <Label>Quiz</Label>
+                    </div>
+                    <div style={{ width: 0 }}>:</div>
+                    <TextField
+                      styles={textFieldstyle}
+                      value={valueObj.Quiz}
+                      readOnly={valueObj.type == "edit"}
+                      onChange={(name) => {
+                        valueObj.Valid = "";
+                        setValueObj(valueObj);
+                        Onchangehandler("Quiz", name.target["value"]);
+                      }}
+                    ></TextField>
+                  </div>
+
                   {/* comments section */}
                   <div className={styles.detailsSection}>
                     <div>
@@ -2002,7 +2078,11 @@ const Dashboard = (props: any): JSX.Element => {
                       margin: "20px 0px",
                     }}
                   >
-                    <Label styles={popupLabelStyle}>File</Label>
+                    <Label styles={popupLabelStyle}>
+                      {acknowledgePopup.obj.AcknowledgementType == "Quiz"
+                        ? "Quiz"
+                        : "File"}
+                    </Label>
                     <Label style={{ width: "2%" }}>:</Label>
                     <Label
                       styles={{
@@ -2018,11 +2098,17 @@ const Dashboard = (props: any): JSX.Element => {
                       }}
                     >
                       <a
-                        href={acknowledgePopup.obj.Link}
+                        href={
+                          acknowledgePopup.obj.AcknowledgementType == "Quiz"
+                            ? acknowledgePopup.obj.Quiz
+                            : acknowledgePopup.obj.Link
+                        }
                         target="_blank"
                         data-interception="off"
                       >
-                        {acknowledgePopup.obj.Title}
+                        {acknowledgePopup.obj.AcknowledgementType == "Quiz"
+                          ? acknowledgePopup.obj.Quiz
+                          : acknowledgePopup.obj.Title}
                       </a>
                     </Label>
                   </div>
