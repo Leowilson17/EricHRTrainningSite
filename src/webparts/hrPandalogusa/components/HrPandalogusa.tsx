@@ -22,16 +22,13 @@ export default class HrPandalogusa extends React.Component<
   }
 
   public render(): React.ReactElement<IHrPandalogusaProps> {
-    const {
-      description,
-      isDarkTheme,
-      environmentMessage,
-      hasTeamsContext,
-      userDisplayName,
-    } = this.props;
-
     return (
-      <Maincomponent spcontext={this.props.context} graphContext={graph} />
+      <Maincomponent
+        spcontext={this.props.context}
+        graphContext={graph}
+        docLibName={this.props.docLibName}
+        commentsListName={this.props.commentsListName}
+      />
     );
   }
 }

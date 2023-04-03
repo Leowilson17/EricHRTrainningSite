@@ -7,6 +7,13 @@ import "@pnp/graph/users";
 import "@pnp/graph/groups";
 import { Spinner, SpinnerSize } from "@fluentui/react";
 
+interface IProps {
+  spcontext: any;
+  graphContext: any;
+  docLibName: string;
+  commentsListName: string;
+}
+
 interface IUsers {
   key: number;
   imageUrl: string;
@@ -23,7 +30,7 @@ interface IAzureGroups {
   groupMembers: any[];
 }
 
-const Maincomponent = (props: any): JSX.Element => {
+const Maincomponent = (props: IProps): JSX.Element => {
   const [ADGroups, setADGroups] = React.useState<IAzureGroups[]>([]);
   const [ADUsers, setADUsers] = React.useState<IUsers[]>([]);
   const [SiteUsers, setSiteUsers] = React.useState<IUsers[]>([]);
@@ -124,6 +131,8 @@ const Maincomponent = (props: any): JSX.Element => {
       peopleList={SiteUsers}
       spcontext={props.spcontext}
       graphContext={props.graphContext}
+      docLibName={props.docLibName}
+      commentsListName={props.commentsListName}
     />
   );
 };

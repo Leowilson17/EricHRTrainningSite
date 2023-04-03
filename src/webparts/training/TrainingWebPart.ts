@@ -14,6 +14,8 @@ import { ITrainingProps } from './components/ITrainingProps';
 
 export interface ITrainingWebPartProps {
   description: string;
+  docLibName:string;
+  commentsListName:string;
 }
 
 export default class TrainingWebPart extends BaseClientSideWebPart<ITrainingWebPartProps> {
@@ -32,6 +34,8 @@ export default class TrainingWebPart extends BaseClientSideWebPart<ITrainingWebP
       Training,
       {
         description: this.properties.description,
+        docLibName:this.properties.docLibName,
+        commentsListName:this.properties.commentsListName,
         isDarkTheme: this._isDarkTheme,
         environmentMessage: this._environmentMessage,
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
@@ -87,7 +91,13 @@ export default class TrainingWebPart extends BaseClientSideWebPart<ITrainingWebP
               groupFields: [
                 PropertyPaneTextField('description', {
                   label: strings.DescriptionFieldLabel
-                })
+                }),
+                PropertyPaneTextField("docLibName", {
+                  label: 'Document Library Name',
+                }),
+                PropertyPaneTextField("commentsListName", {
+                  label: 'Comments List Name',
+                }),
               ]
             }
           ]

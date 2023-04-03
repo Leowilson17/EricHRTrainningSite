@@ -11,7 +11,6 @@ import {
   SearchBox,
   PrimaryButton,
   Dropdown,
-  IDropdownOption,
   IDropdownStyles,
   SelectionMode,
   DetailsList,
@@ -41,6 +40,9 @@ import Pagination from "office-ui-fabric-react-pagination";
 import { loadTheme, createTheme, Theme } from "@fluentui/react";
 import { ILabelStyles } from "office-ui-fabric-react";
 
+import alertify from "alertifyjs";
+import "alertifyjs/build/css/alertify.css";
+
 const myTheme = createTheme({
   palette: {
     themePrimary: "#ff5e14",
@@ -68,6 +70,23 @@ const myTheme = createTheme({
   },
 });
 
+interface IProps {
+  azureUsers: IPeople[];
+  azureGroups: IAzureGroups[];
+  peopleList: IPeople[];
+  spcontext: any;
+  graphContext: any;
+  deptDropdown: IDropDown[];
+  docLibName: string;
+  commentsListName: string;
+}
+
+interface IAzureGroups {
+  groupName: string;
+  groupID: string;
+  groupMembers: any[];
+}
+
 interface IPeople {
   key: number;
   imageUrl: string;
@@ -78,21 +97,39 @@ interface IPeople {
   text: string;
 }
 
+interface INewData {
+  condition: boolean;
+  type: string;
+  Id: number;
+  Department: string;
+  Title: string;
+  Mail: IPeople[];
+  Excluded: IPeople[];
+  Quiz: string;
+  File: any;
+  FileName: string;
+  Valid: string;
+  FileLink: string;
+  Comments: string;
+  Obj: IItems;
+}
+
 interface IItems {
   ID: number;
   AcknowledgementType: string;
+  Department: string;
   Title: string;
   Status: string;
+  QuizStatus: string;
   PendingMembers: IPeople[];
   ApprovedMembers: IPeople[];
+  QuizPendingMembers: IPeople[];
+  QuizApprovedMembers: IPeople[];
   Signatories: IPeople[];
   Excluded: IPeople[];
   Link: string;
   Quiz: string;
   created: string;
-  // PendingMembersID: number[];
-  // approvedMembersID: number[];
-  // approversID: number[];
   DocVersion: number;
   DocTitle: string;
   Comments: string;
@@ -112,6 +149,7 @@ interface IDropDownOptions {
 
 interface IFilters {
   Title: string;
+  Department: string;
   Status: string;
   Approvers: string;
   submittedDate: any;
@@ -125,15 +163,19 @@ let isLoggedUserManager: boolean;
 
 const totalPageItems: number = 10;
 
-const Dashboard = (props: any): JSX.Element => {
+const Dashboard = (props: IProps): JSX.Element => {
   const currentWebSite: string[] =
     props.spcontext.pageContext.web.absoluteUrl.split("/");
 
-  const HRDocName: string = "TrainingHub";
-  const HRCommentsName: string = "TrainingComments";
+  // const DocName: string = "TrainingHub";
+  // const CommentsListName: string = "TrainingComments";
+
+  const DocName: string = props.docLibName;
+  const CommentsListName: string = props.commentsListName;
+
   const url: string = `/sites/${
     currentWebSite[currentWebSite.length - 1]
-  }/${HRDocName}`;
+  }/${DocName}`;
 
   let allPeoples = props.peopleList;
   const loggedUserName: string = props.spcontext.pageContext.user.displayName;
@@ -142,15 +184,18 @@ const Dashboard = (props: any): JSX.Element => {
   // variables
   let filterKeys: IFilters = {
     Title: "",
+    Department: "No Department",
     Status: "All",
     Approvers: "",
     submittedDate: null,
     Uploader: "",
     View: "All Documents",
   };
-  let getDataObj = {
+  const getDataObj: INewData = {
+    condition: false,
     type: "",
     Id: 0,
+    Department: "",
     Title: "",
     Mail: [],
     Excluded: [],
@@ -160,6 +205,7 @@ const Dashboard = (props: any): JSX.Element => {
     Valid: "",
     FileLink: "",
     Comments: "",
+    Obj: null,
   };
 
   const dropDownOptions: IDropDownOptions = {
@@ -182,10 +228,10 @@ const Dashboard = (props: any): JSX.Element => {
       },
     ],
     usersViewOptns: [
-      {
-        key: "All Documents",
-        text: "All Documents",
-      },
+      // {
+      //   key: "All Documents",
+      //   text: "All Documents",
+      // },
       {
         key: "My Acknowledgement",
         text: "My Acknowledgement",
@@ -199,9 +245,6 @@ const Dashboard = (props: any): JSX.Element => {
       { key: "All", text: "All" },
       { key: "Pending", text: "Pending" },
       { key: "In Progress", text: "In Progress" },
-
-      { key: "Quiz Pending", text: "Quiz Pending" },
-      { key: "Quiz In Progress", text: "Quiz In Progress" },
       { key: "Completed", text: "Completed" },
     ],
   };
@@ -218,24 +261,49 @@ const Dashboard = (props: any): JSX.Element => {
       },
       onRender: (item) => {
         return (
-          <a
-            href={item.Link}
-            target="_blank"
-            data-interception="off"
-            style={{
-              color: "#000",
-              textDecoration: "none",
-              fontSize: 13,
-              marginTop: 5,
-            }}
-          >
-            {item.Title}
-          </a>
+          <div style={{ cursor: "default" }}>{item.Title}</div>
+          // <a
+          //   title={item.Title}
+          //   href={item.Link}
+          //   target="_blank"
+          //   data-interception="off"
+          //   style={{
+          //     color: "#000",
+          //     textDecoration: "none",
+          //     fontSize: 13,
+          //     marginTop: 5,
+          //   }}
+          // >
+          //   {item.Title}
+          // </a>
         );
       },
     },
     {
       key: "column2",
+      name: "Department",
+      fieldName: "Department",
+      minWidth: 150,
+      maxWidth: 200,
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
+      },
+      onRender: (item) => {
+        return (
+          <div
+            style={{
+              color: "#000",
+              fontSize: 13,
+              marginTop: 5,
+            }}
+          >
+            {item.Department ? item.Department : "No Department"}
+          </div>
+        );
+      },
+    },
+    {
+      key: "column3",
       name: "Uploaded By",
       fieldName: "Uploader",
       minWidth: 150,
@@ -271,10 +339,10 @@ const Dashboard = (props: any): JSX.Element => {
       },
     },
     {
-      key: "column3",
+      key: "column4",
       name: "Submitted On",
       fieldName: "created",
-      minWidth: 150,
+      minWidth: 100,
       maxWidth: 150,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
@@ -286,40 +354,38 @@ const Dashboard = (props: any): JSX.Element => {
       ),
     },
     {
-      key: "column4",
-      name: "Status",
+      key: "column5",
+      name: "Status for Document",
       fieldName: "Status",
       minWidth: 150,
-      maxWidth: 150,
+      maxWidth: 200,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
       onRender: (item) => {
-        let completionPercentage: number = Math.floor(
-          (item.ApprovedMembers.length /
-            (item.PendingMembers.length + item.ApprovedMembers.length)) *
-            100
+        let completionPercentage: number = getCompletionPercentage(
+          item.ApprovedMembers.length,
+          item.PendingMembers.length
         );
         return (
           <>
-            {item.Status == "Pending" || item.Status == "Quiz Pending" ? (
+            {item.Status == "Pending" ? (
               <div className={statusDesign.Pending}>{item.Status}</div>
-            ) : item.Status == "In Progress" ||
-              item.Status == "Quiz In Progress" ? (
+            ) : item.Status == "In Progress" ? (
               <div className={statusDesign.InProgress}>
                 {item.Status} | {completionPercentage}%
               </div>
             ) : item.Status == "Completed" ? (
               <div className={statusDesign.Completed}>{item.Status}</div>
             ) : (
-              item.Status
+              <div className={statusDesign.Others}>{item.QuizStatus}</div>
             )}
           </>
         );
       },
     },
     {
-      key: "column5",
+      key: "column6",
       name: "Signatories",
       fieldName: "Approvers",
       minWidth: 150,
@@ -406,184 +472,215 @@ const Dashboard = (props: any): JSX.Element => {
         );
       },
     },
+    // {
+    //   key: "column6",
+    //   name: "Acknowledged",
+    //   fieldName: "ApprovedMembers",
+    //   minWidth: 150,
+    //   maxWidth: 150,
+    //   onRender: (data: any) => {
+    //     return (
+    //       data.ApprovedMembers.length > 0 && (
+    //         <>
+    //           {
+    //             <div
+    //               style={{
+    //                 display: "flex",
+    //                 alignItems: "center",
+    //                 justifyContent: "flex-start",
+    //                 cursor: "pointer",
+    //               }}
+    //             >
+    //               {data.ApprovedMembers.map((app, index) => {
+    //                 if (index < 3) {
+    //                   return (
+    //                     <div title={data.ApprovedMembers[index].text}>
+    //                       <Persona
+    //                         styles={{
+    //                           root: {
+    //                             display: "inline",
+    //                           },
+    //                         }}
+    //                         showOverflowTooltip
+    //                         size={PersonaSize.size24}
+    //                         presence={PersonaPresence.none}
+    //                         showInitialsUntilImageLoads={true}
+    //                         imageUrl={
+    //                           "/_layouts/15/userphoto.aspx?size=S&username=" +
+    //                           `${data.ApprovedMembers[index].secondaryText}`
+    //                         }
+    //                       />
+    //                     </div>
+    //                   );
+    //                 }
+    //               })}
+
+    //               {data.ApprovedMembers.length > 3 ? (
+    //                 <div>
+    //                   <TooltipHost
+    //                     content={
+    //                       <ul style={{ margin: 10, padding: 0 }}>
+    //                         {data.ApprovedMembers.map((DName) => {
+    //                           return (
+    //                             <li style={{ listStyleType: "none" }}>
+    //                               <div style={{ display: "flex" }}>
+    //                                 <Persona
+    //                                   showOverflowTooltip
+    //                                   size={PersonaSize.size24}
+    //                                   presence={PersonaPresence.none}
+    //                                   showInitialsUntilImageLoads={true}
+    //                                   imageUrl={
+    //                                     "/_layouts/15/userphoto.aspx?size=S&username=" +
+    //                                     `${DName.secondaryText}`
+    //                                   }
+    //                                 />
+    //                                 <Label style={{ marginLeft: 10 }}>
+    //                                   {DName.text}
+    //                                 </Label>
+    //                               </div>
+    //                             </li>
+    //                           );
+    //                         })}
+    //                       </ul>
+    //                     }
+    //                     delay={TooltipDelay.zero}
+    //                     directionalHint={DirectionalHint.bottomCenter}
+    //                     styles={{ root: { display: "inline-block" } }}
+    //                   >
+    //                     <div className={styles.extraPeople}>
+    //                       {data.ApprovedMembers.length}
+    //                     </div>
+    //                   </TooltipHost>
+    //                 </div>
+    //               ) : null}
+    //             </div>
+    //           }
+    //         </>
+    //       )
+    //     );
+    //   },
+    // },
+    // {
+    //   key: "column7",
+    //   name: "Not Acknowledged",
+    //   fieldName: "PendingMembers",
+    //   minWidth: 150,
+    //   maxWidth: 150,
+    //   onRender: (data: any) => {
+    //     return (
+    //       data.PendingMembers.length > 0 && (
+    //         <>
+    //           {
+    //             <div
+    //               style={{
+    //                 display: "flex",
+    //                 alignItems: "center",
+    //                 justifyContent: "flex-start",
+    //                 cursor: "pointer",
+    //               }}
+    //             >
+    //               {data.PendingMembers.map((app, index) => {
+    //                 if (index < 3) {
+    //                   return (
+    //                     <div title={data.PendingMembers[index].text}>
+    //                       <Persona
+    //                         styles={{
+    //                           root: {
+    //                             display: "inline",
+    //                           },
+    //                         }}
+    //                         showOverflowTooltip
+    //                         size={PersonaSize.size24}
+    //                         presence={PersonaPresence.none}
+    //                         showInitialsUntilImageLoads={true}
+    //                         imageUrl={
+    //                           "/_layouts/15/userphoto.aspx?size=S&username=" +
+    //                           `${data.PendingMembers[index].secondaryText}`
+    //                         }
+    //                       />
+    //                     </div>
+    //                   );
+    //                 }
+    //               })}
+
+    //               {data.PendingMembers.length > 3 ? (
+    //                 <div>
+    //                   <TooltipHost
+    //                     content={
+    //                       <ul style={{ margin: 10, padding: 0 }}>
+    //                         {data.PendingMembers.map((DName) => {
+    //                           return (
+    //                             <li style={{ listStyleType: "none" }}>
+    //                               <div style={{ display: "flex" }}>
+    //                                 <Persona
+    //                                   showOverflowTooltip
+    //                                   size={PersonaSize.size24}
+    //                                   presence={PersonaPresence.none}
+    //                                   showInitialsUntilImageLoads={true}
+    //                                   imageUrl={
+    //                                     "/_layouts/15/userphoto.aspx?size=S&username=" +
+    //                                     `${DName.secondaryText}`
+    //                                   }
+    //                                 />
+    //                                 <Label style={{ marginLeft: 10 }}>
+    //                                   {DName.text}
+    //                                 </Label>
+    //                               </div>
+    //                             </li>
+    //                           );
+    //                         })}
+    //                       </ul>
+    //                     }
+    //                     delay={TooltipDelay.zero}
+    //                     directionalHint={DirectionalHint.bottomCenter}
+    //                     styles={{ root: { display: "inline-block" } }}
+    //                   >
+    //                     <div className={styles.extraPeople}>
+    //                       {data.PendingMembers.length}
+    //                     </div>
+    //                   </TooltipHost>
+    //                 </div>
+    //               ) : null}
+    //             </div>
+    //           }
+    //         </>
+    //       )
+    //     );
+    //   },
+    // },
     {
-      key: "column6",
-      name: "Acknowledged",
-      fieldName: "ApprovedMembers",
+      key: "column7",
+      name: "Status for Quiz",
+      fieldName: "QuizStatus",
       minWidth: 150,
       maxWidth: 200,
-      onRender: (data: any) => {
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
+      },
+      onRender: (item) => {
+        let completionPercentage: number = getCompletionPercentage(
+          item.ApprovedMembers.length,
+          item.PendingMembers.length
+        );
         return (
-          data.ApprovedMembers.length > 0 && (
-            <>
-              {
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    cursor: "pointer",
-                  }}
-                >
-                  {data.ApprovedMembers.map((app, index) => {
-                    if (index < 3) {
-                      return (
-                        <div title={data.ApprovedMembers[index].text}>
-                          <Persona
-                            styles={{
-                              root: {
-                                display: "inline",
-                              },
-                            }}
-                            showOverflowTooltip
-                            size={PersonaSize.size24}
-                            presence={PersonaPresence.none}
-                            showInitialsUntilImageLoads={true}
-                            imageUrl={
-                              "/_layouts/15/userphoto.aspx?size=S&username=" +
-                              `${data.ApprovedMembers[index].secondaryText}`
-                            }
-                          />
-                        </div>
-                      );
-                    }
-                  })}
-
-                  {data.ApprovedMembers.length > 3 ? (
-                    <div>
-                      <TooltipHost
-                        content={
-                          <ul style={{ margin: 10, padding: 0 }}>
-                            {data.ApprovedMembers.map((DName) => {
-                              return (
-                                <li style={{ listStyleType: "none" }}>
-                                  <div style={{ display: "flex" }}>
-                                    <Persona
-                                      showOverflowTooltip
-                                      size={PersonaSize.size24}
-                                      presence={PersonaPresence.none}
-                                      showInitialsUntilImageLoads={true}
-                                      imageUrl={
-                                        "/_layouts/15/userphoto.aspx?size=S&username=" +
-                                        `${DName.secondaryText}`
-                                      }
-                                    />
-                                    <Label style={{ marginLeft: 10 }}>
-                                      {DName.text}
-                                    </Label>
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        }
-                        delay={TooltipDelay.zero}
-                        directionalHint={DirectionalHint.bottomCenter}
-                        styles={{ root: { display: "inline-block" } }}
-                      >
-                        <div className={styles.extraPeople}>
-                          {data.ApprovedMembers.length}
-                        </div>
-                      </TooltipHost>
-                    </div>
-                  ) : null}
-                </div>
-              }
-            </>
-          )
+          <>
+            {item.QuizStatus == "Pending" ? (
+              <div className={statusDesign.Pending}>{item.QuizStatus}</div>
+            ) : item.QuizStatus == "In Progress" ? (
+              <div className={statusDesign.InProgress}>
+                {item.QuizStatus} | {completionPercentage}%
+              </div>
+            ) : item.QuizStatus == "Completed" ? (
+              <div className={statusDesign.Completed}>{item.QuizStatus}</div>
+            ) : (
+              <div className={statusDesign.Others}>{item.QuizStatus}</div>
+            )}
+          </>
         );
       },
     },
     {
       key: "column7",
-      name: "Not Acknowledged",
-      fieldName: "PendingMembers",
-      minWidth: 150,
-      maxWidth: 200,
-      onRender: (data: any) => {
-        return (
-          data.PendingMembers.length > 0 && (
-            <>
-              {
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    cursor: "pointer",
-                  }}
-                >
-                  {data.PendingMembers.map((app, index) => {
-                    if (index < 3) {
-                      return (
-                        <div title={data.PendingMembers[index].text}>
-                          <Persona
-                            styles={{
-                              root: {
-                                display: "inline",
-                              },
-                            }}
-                            showOverflowTooltip
-                            size={PersonaSize.size24}
-                            presence={PersonaPresence.none}
-                            showInitialsUntilImageLoads={true}
-                            imageUrl={
-                              "/_layouts/15/userphoto.aspx?size=S&username=" +
-                              `${data.PendingMembers[index].secondaryText}`
-                            }
-                          />
-                        </div>
-                      );
-                    }
-                  })}
-
-                  {data.PendingMembers.length > 3 ? (
-                    <div>
-                      <TooltipHost
-                        content={
-                          <ul style={{ margin: 10, padding: 0 }}>
-                            {data.PendingMembers.map((DName) => {
-                              return (
-                                <li style={{ listStyleType: "none" }}>
-                                  <div style={{ display: "flex" }}>
-                                    <Persona
-                                      showOverflowTooltip
-                                      size={PersonaSize.size24}
-                                      presence={PersonaPresence.none}
-                                      showInitialsUntilImageLoads={true}
-                                      imageUrl={
-                                        "/_layouts/15/userphoto.aspx?size=S&username=" +
-                                        `${DName.secondaryText}`
-                                      }
-                                    />
-                                    <Label style={{ marginLeft: 10 }}>
-                                      {DName.text}
-                                    </Label>
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        }
-                        delay={TooltipDelay.zero}
-                        directionalHint={DirectionalHint.bottomCenter}
-                        styles={{ root: { display: "inline-block" } }}
-                      >
-                        <div className={styles.extraPeople}>
-                          {data.PendingMembers.length}
-                        </div>
-                      </TooltipHost>
-                    </div>
-                  ) : null}
-                </div>
-              }
-            </>
-          )
-        );
-      },
-    },
-    {
-      key: "column8",
       name: "Action",
       minWidth: 100,
       maxWidth: 100,
@@ -594,9 +691,11 @@ const Dashboard = (props: any): JSX.Element => {
             iconName="View"
             className={iconStyleClass.viewIcon}
             onClick={(): void => {
-              let getDataObj = {
+              let getDataObj: INewData = {
+                condition: true,
                 type: "edit",
                 Id: item.ID,
+                Department: item.Department,
                 Title: item.DocTitle,
                 Mail: item.Signatories,
                 Excluded: item.Excluded,
@@ -606,35 +705,36 @@ const Dashboard = (props: any): JSX.Element => {
                 Valid: "",
                 FileLink: item.Link,
                 Comments: item.Comments,
+                Obj: { ...item },
               };
               setValueObj(getDataObj);
-              setHideModal(true);
             }}
           />
           <Icon
-            title="Acknowlodgement"
+            title={
+              item.AcknowledgementType == "Document"
+                ? "Document Acknowledgement"
+                : item.AcknowledgementType == "Quiz"
+                ? "Quiz Acknowledgement"
+                : "Acknowledged"
+            }
             iconName={
-              item.Status != "Completed" &&
-              item.PendingMembers.some(
-                (user) => user.secondaryText == loggedUserEmail
-              )
+              item.AcknowledgementType == "Document"
                 ? "InsertSignatureLine"
+                : item.AcknowledgementType == "Quiz"
+                ? "TaskLogo"
                 : "DocumentApproval"
             }
             className={
-              item.Status != "Completed" &&
-              item.PendingMembers.some(
-                (user) => user.secondaryText == loggedUserEmail
-              )
+              item.AcknowledgementType == "Document" ||
+              item.AcknowledgementType == "Quiz"
                 ? iconStyleClass.popupIcon
                 : iconStyleClass.disabledIcon
             }
             onClick={(): void => {
               if (
-                item.Status != "Completed" &&
-                item.PendingMembers.some(
-                  (user) => user.secondaryText == loggedUserEmail
-                )
+                item.AcknowledgementType == "Document" ||
+                item.AcknowledgementType == "Quiz"
               ) {
                 setAcknowledgePopup({
                   condition: true,
@@ -667,17 +767,55 @@ const Dashboard = (props: any): JSX.Element => {
 
   const searchStyle = {
     root: {
-      width: 220,
-      marginRight: 20,
+      width: 180,
+      marginRight: 10,
       "&::after": {
         borderColor: "rgb(96, 94, 92)",
       },
     },
   };
   const dropdownStyles: Partial<IDropdownStyles> = {
+    title: { fontSize: 12 },
     dropdown: {
-      width: 220,
-      marginRight: 20,
+      width: 200,
+      marginRight: 10,
+      "&:focus::after": {
+        borderColor: "rgb(96, 94, 92)",
+      },
+    },
+    callout: {
+      maxHeight: 300,
+    },
+    dropdownItem: {
+      backgroundColor: "#F5F5F7",
+      fontSize: 12,
+    },
+    dropdownItemSelected: {
+      backgroundColor: "#F5F5F7",
+      fontSize: 12,
+    },
+  };
+  const popupDropdownStyles: Partial<IDropdownStyles> = {
+    root: { margin: "0 13px", width: "90%" },
+    title: {
+      backgroundColor: "#f5f8fa !important",
+      border: "1px solid #cbd6e2 !important",
+      "&::after": {
+        border: "1px solid rgb(111 165 224) !important",
+      },
+    },
+    callout: {
+      maxHeight: 300,
+    },
+    dropdownItem: {
+      backgroundColor: "#F5F5F7",
+      fontSize: 12,
+    },
+    dropdownItemSelected: {
+      backgroundColor: "#F5F5F7",
+      fontSize: 12,
+    },
+    dropdown: {
       "&:focus::after": {
         borderColor: "rgb(96, 94, 92)",
       },
@@ -733,21 +871,30 @@ const Dashboard = (props: any): JSX.Element => {
         margin: "0",
       },
     ],
+    Others: [
+      {
+        backgroundColor: "#D4E7F6",
+        color: "#0068B8",
+        fontWeight: 600,
+        padding: "5px 10px",
+        borderRadius: "15px",
+        textAlign: "center",
+        margin: "0",
+      },
+    ],
   });
-  const newmodalDesign: Partial<IModalStyles> = {
+  const newModalDesign: Partial<IModalStyles> = {
     main: {
       padding: 10,
       width: 505,
-      // height: 418,
       height: "auto",
       borderRadius: 5,
     },
   };
-  const editmodalDesign: Partial<IModalStyles> = {
+  const editModalDesign: Partial<IModalStyles> = {
     main: {
       padding: 10,
-      width: 505,
-      // height: 400,
+      width: 900,
       height: "auto",
       borderRadius: 5,
     },
@@ -760,8 +907,8 @@ const Dashboard = (props: any): JSX.Element => {
   };
   const datePickerStyle: Partial<IDatePickerStyles> = {
     root: {
-      width: 200,
-      marginRight: 20,
+      width: 180,
+      marginRight: 10,
       ".ms-TextField-fieldGroup": {
         border: "1px solid #000 !important",
         "::after": {
@@ -782,7 +929,7 @@ const Dashboard = (props: any): JSX.Element => {
       margin: "0 13px",
     },
     fieldGroup: {
-      height: 40,
+      // height: 40,
       backgroundColor: "#f5f8fa !important",
       border: "1px solid #cbd6e2 !important",
       "&::after": {
@@ -931,12 +1078,12 @@ const Dashboard = (props: any): JSX.Element => {
   });
 
   // State variable
+  const [isManager, setIsManager] = useState<boolean>(false);
   const [nofillterData, setnofillterData] = useState<IItems[]>([]);
   const [masterData, setMasterData] = useState<IItems[]>([]);
   const [FilterKeys, setFilterKeys] = useState<IFilters>(filterKeys);
   const [displayData, setdisplayData] = useState([]);
-  const [valueObj, setValueObj] = useState(getDataObj);
-  const [showModal, setHideModal] = useState(false);
+  const [valueObj, setValueObj] = useState<INewData>(getDataObj);
   const [showDelModal, setHideDelModal] = useState({
     condition: false,
     targetID: null,
@@ -989,10 +1136,11 @@ const Dashboard = (props: any): JSX.Element => {
 
         setFilterKeys({ ..._filterKeys });
 
+        setIsManager(_isManager);
         getDatafromLibrary(_filterKeys);
       })
       .catch((error) => {
-        err(error, "getManagers");
+        errorFunction(error, "getManagers");
       });
   };
   // get Document from Library
@@ -1007,59 +1155,82 @@ const Dashboard = (props: any): JSX.Element => {
       .orderBy("TimeLastModified", false)
       .get()
       .then((value: any[]) => {
-        let pendingMembers = [];
-        let approvedMembers = [];
-        let _Signatories = [];
-        let _Excluded = [];
-        let _uploader = [];
-
         value.forEach((data, index) => {
-          let _NotAcknowledgedEmails = !data.ListItemAllFields[
-            "NotAcknowledgedEmails"
-          ]
-            ? data.ListItemAllFields["QuizNotAcknowledgedEmails"]
-            : data.ListItemAllFields["NotAcknowledgedEmails"];
+          let _uploader = [];
 
-          let _AcknowledgedEmails = !data.ListItemAllFields[
-            "NotAcknowledgedEmails"
-          ]
-            ? data.ListItemAllFields["QuizAcknowledgedEmails"]
-            : data.ListItemAllFields["AcknowledgedEmails"];
+          let pendingMembers = [];
+          let approvedMembers = [];
+          let _quizPendingMembers = [];
+          let _quizApprovedMembers = [];
 
-          let acknowledgementType: string = !data.ListItemAllFields[
-            "NotAcknowledgedEmails"
-          ]
-            ? "Quiz"
-            : "Document";
+          let _Signatories = [];
+          let _Excluded = [];
+
+          // let _NotAcknowledgedEmails = !data.ListItemAllFields[
+          //   "NotAcknowledgedEmails"
+          // ]
+          //   ? data.ListItemAllFields["QuizNotAcknowledgedEmails"]
+          //   : data.ListItemAllFields["NotAcknowledgedEmails"];
+
+          // let _AcknowledgedEmails = !data.ListItemAllFields[
+          //   "NotAcknowledgedEmails"
+          // ]
+          //   ? data.ListItemAllFields["QuizAcknowledgedEmails"]
+          //   : data.ListItemAllFields["AcknowledgedEmails"];
 
           _uploader = allPeoples.filter((users) => {
             return users.secondaryText == data.Author.Email;
           });
 
           //pendingMembers
-          pendingMembers = [];
-          _NotAcknowledgedEmails &&
-            _NotAcknowledgedEmails.split(";").forEach((val) => {
-              let tempArr = [];
-              tempArr = props.azureUsers.filter((users) => {
-                return val && users.secondaryText == val;
+          data.ListItemAllFields["NotAcknowledgedEmails"] &&
+            data.ListItemAllFields["NotAcknowledgedEmails"]
+              .split(";")
+              .forEach((val) => {
+                let tempArr = [];
+                tempArr = props.azureUsers.filter((users) => {
+                  return val && users.secondaryText == val;
+                });
+                if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
               });
-              if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
-            });
 
           //approvedMembers
-          approvedMembers = [];
-          _AcknowledgedEmails &&
-            _AcknowledgedEmails.split(";").forEach((val) => {
-              let tempArr = [];
-              tempArr = props.azureUsers.filter((users) => {
-                return val && users.secondaryText == val;
+          data.ListItemAllFields["AcknowledgedEmails"] &&
+            data.ListItemAllFields["AcknowledgedEmails"]
+              .split(";")
+              .forEach((val) => {
+                let tempArr = [];
+                tempArr = props.azureUsers.filter((users) => {
+                  return val && users.secondaryText == val;
+                });
+                if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
               });
-              if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
-            });
 
-          //approvers
-          _Signatories = [];
+          //_quizPendingMembers
+          data.ListItemAllFields["QuizNotAcknowledgedEmails"] &&
+            data.ListItemAllFields["QuizNotAcknowledgedEmails"]
+              .split(";")
+              .forEach((val) => {
+                let tempArr = [];
+                tempArr = props.azureUsers.filter((users) => {
+                  return val && users.secondaryText == val;
+                });
+                if (tempArr.length > 0) _quizPendingMembers.push(tempArr[0]);
+              });
+
+          //_quizApprovedMembers
+          data.ListItemAllFields["QuizAcknowledgedEmails"] &&
+            data.ListItemAllFields["QuizAcknowledgedEmails"]
+              .split(";")
+              .forEach((val) => {
+                let tempArr = [];
+                tempArr = props.azureUsers.filter((users) => {
+                  return val && users.secondaryText == val;
+                });
+                if (tempArr.length > 0) _quizApprovedMembers.push(tempArr[0]);
+              });
+
+          //_Signatories
           data.ListItemAllFields["SignatoriesId"] &&
             data.ListItemAllFields["SignatoriesId"].forEach((val) => {
               let tempArr = [];
@@ -1069,9 +1240,7 @@ const Dashboard = (props: any): JSX.Element => {
               if (tempArr.length > 0) _Signatories.push(tempArr[0]);
             });
 
-          // Excluded
-          _Excluded = [];
-
+          //_Excluded
           data.ListItemAllFields["ExcludedId"] &&
             data.ListItemAllFields["ExcludedId"].forEach((val) => {
               let tempArr = [];
@@ -1081,13 +1250,28 @@ const Dashboard = (props: any): JSX.Element => {
               if (tempArr.length > 0) _Excluded.push(tempArr[0]);
             });
 
+          //acknowledgementType
+          let acknowledgementType: string = pendingMembers.some(
+            (user) => user.secondaryText == loggedUserEmail
+          )
+            ? "Document"
+            : _quizPendingMembers.some(
+                (user) => user.secondaryText == loggedUserEmail
+              )
+            ? "Quiz"
+            : "Completed";
+
           getDataArray.push({
             ID: data.ListItemAllFields["Id"],
             AcknowledgementType: acknowledgementType,
+            Department: data.ListItemAllFields["Department"],
             Title: data.Name,
             Status: data.ListItemAllFields["Status"],
+            QuizStatus: data.ListItemAllFields["QuizStatus"],
             PendingMembers: pendingMembers,
             ApprovedMembers: approvedMembers,
+            QuizPendingMembers: _quizPendingMembers,
+            QuizApprovedMembers: _quizApprovedMembers,
             Signatories: _Signatories,
             Excluded: _Excluded,
             Link: data.ServerRelativeUrl,
@@ -1137,7 +1321,7 @@ const Dashboard = (props: any): JSX.Element => {
         settableLoader(false);
       })
       .catch((error) => {
-        err("getDatafromLibrary", error);
+        errorFunction("getDatafromLibrary", error);
       });
   }
 
@@ -1147,15 +1331,21 @@ const Dashboard = (props: any): JSX.Element => {
     let tempFilter: IFilters = FilterKeys;
     tempFilter[key] = val;
 
-    if (tempFilter.Status != "All") {
-      tempArr = tempArr.filter((arr) => {
-        return arr.Status == tempFilter.Status;
-      });
-    }
     if (tempFilter.Title) {
       tempArr = tempArr.filter((arr) =>
         arr.Title.toLowerCase().includes(tempFilter.Title.toLowerCase())
       );
+    }
+    if (tempFilter.Department != "No Department") {
+      tempArr = tempArr.filter(
+        (arr) => arr.Department == tempFilter.Department
+      );
+    }
+
+    if (tempFilter.Status != "All") {
+      tempArr = tempArr.filter((arr) => {
+        return arr.Status == tempFilter.Status;
+      });
     }
     if (tempFilter.Approvers) {
       tempArr = tempArr.filter((arr) => {
@@ -1214,6 +1404,7 @@ const Dashboard = (props: any): JSX.Element => {
   function Onchangehandler(key, val) {
     let getDatatempArray = valueObj;
     getDatatempArray[key] = val;
+    getDatatempArray.Valid = "";
     setValueObj({ ...getDatatempArray });
   }
 
@@ -1221,6 +1412,10 @@ const Dashboard = (props: any): JSX.Element => {
   function validation() {
     let checkObj = valueObj;
     let isError = false;
+    // if (!checkObj.Department) {
+    //   isError = true;
+    //   checkObj.Valid = "* Please Select Department";
+    // } else
     if (!checkObj.Title.trim()) {
       isError = true;
       checkObj.Valid = "* Please Enter Title";
@@ -1259,66 +1454,72 @@ const Dashboard = (props: any): JSX.Element => {
       fileNameArr[fileNameArr.length - 2] + "v" + _docVersion;
     let fileName = fileNameArr.join(".");
 
-    let filteredsignatories: any[] = updateData.Mail.filter(
-      (_sign) =>
-        !updateData.Excluded.some(
-          (exclude) => exclude.secondaryText == _sign.secondaryText
-        )
-    );
-
-    let approvers: number[] = filteredsignatories.map((people) => people.ID);
+    let approvers: number[] = updateData.Mail.map((people) => people.ID);
 
     let excludedUsers: number[] =
       updateData.Excluded.length > 0
         ? updateData.Excluded.map((people) => people.ID)
         : [];
 
+    let filteredSignatories =
+      updateData.Department != "No Department"
+        ? updateData.Mail.filter(
+            (user) => user.department == updateData.Department
+          )
+        : updateData.Mail;
     let pendingApprovers: string = emailReturnFunction(
-      filteredsignatories,
+      filteredSignatories,
       updateData.Excluded
     );
 
-    let responseData = {
-      DocTitle: updateData.Title.trim(),
-      DocVersion: _docVersion,
-      Comments: updateData.Comments.trim(),
-      FileName: updateData.File["name"],
-      Quiz: updateData.Quiz,
-      SignatoriesId: {
-        results: approvers,
-      },
-      ExcludedId: {
-        results: excludedUsers,
-      },
-      NotAcknowledgedEmails: pendingApprovers,
-      QuizNotAcknowledgedEmails: updateData.Quiz ? pendingApprovers : "",
-      Status: "Pending",
-      SubmittedOn: moment().format("YYYY-MM-DD"),
-      Year: moment().year().toString(),
-      Week: moment().isoWeek().toString(),
-    };
+    if (filteredSignatories.length > 0 && pendingApprovers) {
+      let responseData = {
+        DocTitle: updateData.Title.trim(),
+        DocVersion: _docVersion,
+        Comments: updateData.Comments.trim(),
+        Department: updateData.Department.trim(),
+        FileName: updateData.File["name"],
+        Quiz: updateData.Quiz,
+        SignatoriesId: {
+          results: approvers,
+        },
+        ExcludedId: {
+          results: excludedUsers,
+        },
+        NotAcknowledgedEmails: pendingApprovers,
+        QuizNotAcknowledgedEmails: updateData.Quiz ? pendingApprovers : "",
+        Status: "Pending",
+        QuizStatus: updateData.Quiz ? "Pending" : "No Quiz",
+        SubmittedOn: moment().format("YYYY-MM-DD"),
+        Year: moment().year().toString(),
+        Week: moment().isoWeek().toString(),
+      };
 
-    sp.web
-      .getFolderByServerRelativePath(url)
-      .files.add(fileName, updateData.File, false)
-      .then((data) => {
-        data.file.getItem().then((item) => {
-          item
-            .update(responseData)
-            .then((_) => {
-              setValueObj(getDataObj);
-              setOnSubmitLoader(false);
-              setHideModal(false);
-              getManagers();
-            })
-            .catch((error) => {
-              err(error, "addFile");
-            });
+      sp.web
+        .getFolderByServerRelativePath(url)
+        .files.add(fileName, updateData.File, false)
+        .then((data) => {
+          data.file.getItem().then((item) => {
+            item
+              .update(responseData)
+              .then((_) => {
+                setValueObj(getDataObj);
+                setOnSubmitLoader(false);
+                init();
+              })
+              .catch((error) => {
+                errorFunction(error, "addFile");
+              });
+          });
+        })
+        .catch((error) => {
+          errorFunction("addFile", error);
         });
-      })
-      .catch((error) => {
-        err("addFile", error);
-      });
+    } else {
+      _valueObj.Valid = "* Please Select Valid Users";
+      setValueObj({ ..._valueObj });
+      setOnSubmitLoader(false);
+    }
   }
 
   const emailReturnFunction = (
@@ -1352,6 +1553,9 @@ const Dashboard = (props: any): JSX.Element => {
             (mail: string) =>
               !excludedUsers.some((exclude) => exclude.secondaryText == mail)
           );
+          // _pendingApprovers = _pendingApprovers.filter(
+          //   (user) => user != loggedUserEmail
+          // );
           return _pendingApprovers.join(";");
         }
       }
@@ -1363,13 +1567,13 @@ const Dashboard = (props: any): JSX.Element => {
   // delete function
   function deleteFunction(val) {
     sp.web.lists
-      .getByTitle(HRDocName)
+      .getByTitle(DocName)
       .items.getById(val)
       .update({ IsDelete: true })
       .then(() => {
-        getManagers();
         setHideDelModal({ condition: false, targetID: null });
         setOnSubmitLoader(false);
+        init();
       });
   }
 
@@ -1463,6 +1667,8 @@ const Dashboard = (props: any): JSX.Element => {
 
   // reset function
   function reset() {
+    let _filterKeys = filterKeys;
+    _filterKeys.View = isManager ? "All Documents" : "Pending Acknowledgement";
     setdisplayData(masterData);
     setFilterKeys(filterKeys);
     setColumns(_columns);
@@ -1484,9 +1690,32 @@ const Dashboard = (props: any): JSX.Element => {
   };
 
   // error handling
-  function err(msg: string, error: any): void {
+  function errorFunction(msg: string, error: any): void {
     console.log(msg, error);
+    alertify.set("notifier", "position", "top-right");
+    alertify.error("Something when error, please contact system admin.");
+    resetAllFunction();
   }
+
+  const resetAllFunction = (): void => {
+    setAcknowledgePopup({
+      condition: false,
+      obj: null,
+      isFileOpened: false,
+      userName: "",
+      userNameValidation: false,
+      comments: "",
+      commentsValidation: false,
+      overAllValidation: false,
+    });
+    setHideDelModal({
+      condition: false,
+      targetID: null,
+    });
+    setValueObj(getDataObj);
+    setOnSubmitLoader(false);
+    settableLoader(false);
+  };
 
   const acknowledgePopupOnChangeHandler = (
     key: string,
@@ -1516,96 +1745,82 @@ const Dashboard = (props: any): JSX.Element => {
   };
 
   const updateFunction = (_acknowledgePopup) => {
-    if (
-      _acknowledgePopup.obj.PendingMembers.some(
-        (user) => user.secondaryText.trim() == loggedUserEmail
-      )
-    ) {
-      let updatedStatus: string = "";
-      let targetUser = _acknowledgePopup.obj.PendingMembers.filter(
-        (user) => user.secondaryText.trim() == loggedUserEmail
-      );
+    let _pendingMembers =
+      _acknowledgePopup.obj.AcknowledgementType == "Document"
+        ? _acknowledgePopup.obj.PendingMembers
+        : _acknowledgePopup.obj.QuizPendingMembers;
 
-      let updatedPendingApprovers = _acknowledgePopup.obj.PendingMembers.filter(
-        (user) => user.secondaryText.trim() != loggedUserEmail
-      );
+    let _approvedMembers =
+      _acknowledgePopup.obj.AcknowledgementType == "Document"
+        ? _acknowledgePopup.obj.ApprovedMembers
+        : _acknowledgePopup.obj.QuizApprovedMembers;
 
-      let updatedApprovedMembers = [
-        ..._acknowledgePopup.obj.ApprovedMembers,
-        ...targetUser,
-      ];
+    let updatedStatus: string = "";
+    let targetUser = _pendingMembers.filter(
+      (user) => user.secondaryText.trim() == loggedUserEmail
+    );
 
-      updatedPendingApprovers = updatedPendingApprovers.map(
-        (_user) => _user.secondaryText
-      );
+    let updatedPendingApprovers = _pendingMembers.filter(
+      (user) => user.secondaryText.trim() != loggedUserEmail
+    );
 
-      updatedApprovedMembers = updatedApprovedMembers.map(
-        (_user) => _user.secondaryText
-      );
+    let updatedApprovedMembers = [..._approvedMembers, ...targetUser];
 
-      if (updatedPendingApprovers.length == 0) {
-        updatedStatus =
-          _acknowledgePopup.obj.AcknowledgementType == "Document" &&
-          _acknowledgePopup.obj.Quiz == ""
-            ? "Completed"
-            : _acknowledgePopup.obj.AcknowledgementType == "Quiz"
-            ? "Completed"
-            : "Quiz Pending";
-      } else if (
-        updatedPendingApprovers.length > 0 &&
-        updatedApprovedMembers.length > 0
-      ) {
-        updatedStatus =
-          _acknowledgePopup.obj.AcknowledgementType == "Quiz"
-            ? "Quiz In Progress"
-            : "In Progress";
-      }
+    updatedPendingApprovers = updatedPendingApprovers.map(
+      (_user) => _user.secondaryText
+    );
 
-      let responseData =
-        _acknowledgePopup.obj.AcknowledgementType == "Quiz"
-          ? {
-              QuizNotAcknowledgedEmails:
-                updatedPendingApprovers.length > 0
-                  ? updatedPendingApprovers.join(";") + ";"
-                  : "",
-              QuizAcknowledgedEmails:
-                updatedApprovedMembers.length > 0
-                  ? updatedApprovedMembers.join(";") + ";"
-                  : "",
-              Status: updatedStatus
-                ? updatedStatus
-                : _acknowledgePopup.obj.Status,
-            }
-          : {
-              NotAcknowledgedEmails:
-                updatedPendingApprovers.length > 0
-                  ? updatedPendingApprovers.join(";") + ";"
-                  : "",
-              AcknowledgedEmails:
-                updatedApprovedMembers.length > 0
-                  ? updatedApprovedMembers.join(";") + ";"
-                  : "",
-              Status: updatedStatus
-                ? updatedStatus
-                : _acknowledgePopup.obj.Status,
-            };
+    updatedApprovedMembers = updatedApprovedMembers.map(
+      (_user) => _user.secondaryText
+    );
 
-      sp.web.lists
-        .getByTitle(HRDocName)
-        .items.getById(_acknowledgePopup.obj.ID)
-        .update(responseData)
-        .then(() => {
-          addAcknowlegdementComments(
-            _acknowledgePopup.obj.ID,
-            acknowledgePopup.userName,
-            acknowledgePopup.obj.AcknowledgementType,
-            acknowledgePopup.comments
-          );
-        })
-        .catch((error) => {
-          err(error, "updateFunction");
-        });
+    if (updatedPendingApprovers.length == 0) {
+      updatedStatus = "Completed";
+    } else if (updatedPendingApprovers.length > 0) {
+      updatedStatus = "In Progress";
+    } else {
+      updatedStatus = _acknowledgePopup.obj.QuizStatus;
     }
+
+    let responseData =
+      _acknowledgePopup.obj.AcknowledgementType == "Document"
+        ? {
+            NotAcknowledgedEmails:
+              updatedPendingApprovers.length > 0
+                ? updatedPendingApprovers.join(";") + ";"
+                : "",
+            AcknowledgedEmails:
+              updatedApprovedMembers.length > 0
+                ? updatedApprovedMembers.join(";") + ";"
+                : "",
+            Status: updatedStatus,
+          }
+        : {
+            QuizNotAcknowledgedEmails:
+              updatedPendingApprovers.length > 0
+                ? updatedPendingApprovers.join(";") + ";"
+                : "",
+            QuizAcknowledgedEmails:
+              updatedApprovedMembers.length > 0
+                ? updatedApprovedMembers.join(";") + ";"
+                : "",
+            QuizStatus: updatedStatus,
+          };
+    sp.web.lists
+      .getByTitle(DocName)
+      .items.getById(_acknowledgePopup.obj.ID)
+      .update(responseData)
+      .then(() => {
+        addAcknowlegdementComments(
+          _acknowledgePopup.obj.ID,
+          acknowledgePopup.userName,
+          acknowledgePopup.obj.AcknowledgementType,
+          acknowledgePopup.comments
+        );
+      })
+      .catch((error) => {
+        errorFunction(error, "updateFunction");
+      });
   };
 
   const addAcknowlegdementComments = (
@@ -1615,7 +1830,7 @@ const Dashboard = (props: any): JSX.Element => {
     _comments: string
   ) => {
     sp.web.lists
-      .getByTitle(HRCommentsName)
+      .getByTitle(CommentsListName)
       .items.add({
         Title: loggedUserEmail,
         AcknowledgementType: _acknowledgementType,
@@ -1634,18 +1849,100 @@ const Dashboard = (props: any): JSX.Element => {
           commentsValidation: false,
           overAllValidation: false,
         });
-        settableLoader(true);
-        getManagers();
+        init();
       })
       .catch((error) => {
-        err(error, "addAcknowlegdementComments");
+        errorFunction(error, "addAcknowlegdementComments");
       });
+  };
+  const getCompletionPercentage = (
+    approvedCount: number,
+    pendingCount: number
+  ) => {
+    return Math.floor((approvedCount / (pendingCount + approvedCount)) * 100);
+  };
+
+  const groupPersonaHTMLBulider = (data: IPeople[]): JSX.Element => {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          cursor: "pointer",
+          width: 250,
+        }}
+      >
+        {data.map((app, index) => {
+          if (index < 3) {
+            return (
+              <div title={valueObj.Mail[index].text}>
+                <Persona
+                  styles={{
+                    root: {
+                      display: "inline",
+                    },
+                  }}
+                  showOverflowTooltip
+                  size={PersonaSize.size24}
+                  presence={PersonaPresence.none}
+                  showInitialsUntilImageLoads={true}
+                  imageUrl={
+                    "/_layouts/15/userphoto.aspx?size=S&username=" +
+                    `${data[index].secondaryText}`
+                  }
+                />
+              </div>
+            );
+          }
+        })}
+        {data.length > 3 ? (
+          <div>
+            <TooltipHost
+              content={
+                <ul style={{ margin: 10, padding: 0 }}>
+                  {data.map((DName) => {
+                    return (
+                      <li style={{ listStyleType: "none" }}>
+                        <div style={{ display: "flex" }}>
+                          <Persona
+                            showOverflowTooltip
+                            size={PersonaSize.size24}
+                            presence={PersonaPresence.none}
+                            showInitialsUntilImageLoads={true}
+                            imageUrl={
+                              "/_layouts/15/userphoto.aspx?size=S&username=" +
+                              `${DName.secondaryText}`
+                            }
+                          />
+                          <Label style={{ marginLeft: 10 }}>{DName.text}</Label>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              }
+              delay={TooltipDelay.zero}
+              // id={item.ID}
+              directionalHint={DirectionalHint.bottomCenter}
+              styles={{ root: { display: "inline-block" } }}
+            >
+              <div className={styles.extraPeople}>{data.length}</div>
+            </TooltipHost>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
+  const init = (): void => {
+    settableLoader(true);
+    getManagers();
   };
 
   // useEffect
-  React.useEffect(() => {
-    settableLoader(true);
-    getManagers();
+  useEffect(() => {
+    init();
   }, []);
 
   return (
@@ -1660,7 +1957,7 @@ const Dashboard = (props: any): JSX.Element => {
             <div>
               {/* header section starts */}
               {/* <Label className={styles.header}>HR Documents</Label> */}
-              <Label className={styles.header}>HR Training</Label>
+              <Label className={styles.header}>SOPs & Trainings</Label>
               {/* header section ends */}
 
               {/* filter section stars */}
@@ -1674,6 +1971,17 @@ const Dashboard = (props: any): JSX.Element => {
                       value={FilterKeys.Title}
                       onChange={(e, text) => {
                         filterFunction("Title", text);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Department</Label>
+                    <Dropdown
+                      options={props.deptDropdown}
+                      styles={dropdownStyles}
+                      selectedKey={FilterKeys.Department}
+                      onChange={(e, option) => {
+                        filterFunction("Department", option["text"]);
                       }}
                     />
                   </div>
@@ -1749,23 +2057,18 @@ const Dashboard = (props: any): JSX.Element => {
                   </div>
                 </div>
                 {/* filter section ends */}
-                {/* new button */}
-                {/* <TextField
-            type="file"
-            onChange={(file) => {
-              addFile(file);
-            }}
-          /> */}
                 {isLoggedUserManager ? (
                   <div>
                     <PrimaryButton
                       text="New"
                       className={styles.newBtn}
                       onClick={() => {
-                        setHideModal(true);
-                        valueObj.Id = 0;
-                        valueObj.type = "new";
-                        setValueObj({ ...valueObj });
+                        let _getDataObj: INewData = getDataObj;
+                        _getDataObj.condition = true;
+                        _getDataObj.Id = 0;
+                        _getDataObj.type = "new";
+                        _getDataObj.Department = "No Department";
+                        setValueObj({ ..._getDataObj });
                       }}
                     />
                   </div>
@@ -1811,23 +2114,37 @@ const Dashboard = (props: any): JSX.Element => {
             </div>
           </div>
 
-          {/*  new and view modal section */}
-          {showModal ? (
-            <Modal
-              styles={valueObj.type == "new" ? newmodalDesign : editmodalDesign}
-              isOpen={showModal}
-            >
+          {/*  New Popup */}
+          {valueObj.condition && valueObj.type == "new" ? (
+            <Modal styles={newModalDesign} isOpen={valueObj.condition}>
               <div className={styles.modalCustomDesign}>
                 <div className={styles.header}>
-                  {valueObj.type == "new" ? (
-                    <h2>New Document</h2>
-                  ) : (
-                    <h2>View Document</h2>
-                  )}
+                  <h2>New Document</h2>
                 </div>
 
                 {/* details section */}
                 <div>
+                  {/* department */}
+                  <div
+                    className={styles.detailsSection}
+                    style={{ alignItems: "center" }}
+                  >
+                    <div>
+                      <Label>
+                        Department <span style={{ color: "red" }}>*</span>
+                      </Label>
+                    </div>
+                    <div style={{ width: 0 }}>:</div>
+                    <Dropdown
+                      options={props.deptDropdown}
+                      dropdownWidth={"auto"}
+                      styles={popupDropdownStyles}
+                      selectedKey={valueObj.Department}
+                      onChange={(e, option) => {
+                        Onchangehandler("Department", option["text"]);
+                      }}
+                    />
+                  </div>
                   {/* title */}
                   <div
                     className={styles.detailsSection}
@@ -1842,13 +2159,10 @@ const Dashboard = (props: any): JSX.Element => {
                     <TextField
                       styles={textFieldstyle}
                       value={valueObj.Title}
-                      readOnly={valueObj.type == "edit"}
                       onChange={(name) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
                         Onchangehandler("Title", name.target["value"]);
                       }}
-                    ></TextField>
+                    />
                   </div>
                   {/* file */}
                   <div
@@ -1861,47 +2175,17 @@ const Dashboard = (props: any): JSX.Element => {
                       </Label>
                     </div>
                     <div>:</div>
-                    {valueObj.type == "new" ? (
-                      <>
-                        <div>
-                          <input
-                            style={{ margin: "0 10px" }}
-                            className={styles.fileStyle}
-                            type="file"
-                            id="uploadFile"
-                            // disabled={valueObj.type == "edit"}
-                            onChange={(file) => {
-                              valueObj.Valid = "";
-                              setValueObj(valueObj);
-                              Onchangehandler("File", file.target["files"][0]);
-                            }}
-                          />
-                        </div>
-                      </>
-                    ) : null}
-                    {valueObj.Id != 0 && (
-                      <>
-                        <div style={{ width: 290, margin: "0 10px" }}>
-                          {/* <Label style={{ width: 105 }}></Label> */}
-                          <Label
-                            styles={{
-                              root: {
-                                width: "100% !important",
-                                fontSize: 16,
-                              },
-                            }}
-                          >
-                            <a
-                              target="_blank"
-                              data-interception="off"
-                              href={valueObj.FileLink}
-                            >
-                              {valueObj.FileName}
-                            </a>
-                          </Label>
-                        </div>
-                      </>
-                    )}
+                    <div>
+                      <input
+                        style={{ margin: "0 10px" }}
+                        className={styles.fileStyle}
+                        type="file"
+                        id="uploadFile"
+                        onChange={(file) => {
+                          Onchangehandler("File", file.target["files"][0]);
+                        }}
+                      />
+                    </div>
                   </div>
                   {/* people picker */}
                   <div className={styles.detailsSection}>
@@ -1912,18 +2196,11 @@ const Dashboard = (props: any): JSX.Element => {
                     </div>
                     <div>:</div>
                     <NormalPeoplePicker
-                      styles={
-                        valueObj.type == "edit"
-                          ? peoplePickerDisabledStyle
-                          : peoplePickerStyle
-                      }
+                      styles={peoplePickerStyle}
                       onResolveSuggestions={GetUserDetails}
                       itemLimit={10}
-                      disabled={valueObj.type == "edit"}
                       selectedItems={valueObj.Mail}
                       onChange={(selectedUser) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
                         Onchangehandler("Mail", selectedUser);
                       }}
                     />
@@ -1936,18 +2213,11 @@ const Dashboard = (props: any): JSX.Element => {
                     </div>
                     <div>:</div>
                     <NormalPeoplePicker
-                      styles={
-                        valueObj.type == "edit"
-                          ? peoplePickerDisabledStyle
-                          : peoplePickerStyle
-                      }
+                      styles={peoplePickerStyle}
                       onResolveSuggestions={GetUserDetailsUserOnly}
-                      itemLimit={10}
-                      disabled={valueObj.type == "edit"}
+                      itemLimit={1000}
                       selectedItems={valueObj.Excluded}
                       onChange={(selectedUser) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
                         Onchangehandler("Excluded", selectedUser);
                       }}
                     />
@@ -1965,13 +2235,10 @@ const Dashboard = (props: any): JSX.Element => {
                     <TextField
                       styles={textFieldstyle}
                       value={valueObj.Quiz}
-                      readOnly={valueObj.type == "edit"}
                       onChange={(name) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
                         Onchangehandler("Quiz", name.target["value"]);
                       }}
-                    ></TextField>
+                    />
                   </div>
 
                   {/* comments section */}
@@ -1985,10 +2252,7 @@ const Dashboard = (props: any): JSX.Element => {
                       style={{ resize: "none" }}
                       value={valueObj.Comments}
                       multiline
-                      readOnly={valueObj.type == "edit"}
                       onChange={(name) => {
-                        // valueObj.Valid = "";
-                        // setValueObj(valueObj);
                         Onchangehandler("Comments", name.target["value"]);
                       }}
                     ></TextField>
@@ -2007,42 +2271,331 @@ const Dashboard = (props: any): JSX.Element => {
 
                   <PrimaryButton
                     className={styles.cancelBtn}
-                    style={
-                      valueObj.type == "new"
-                        ? { marginRight: 15 }
-                        : { marginRight: 0 }
-                    }
                     text="Cancel"
                     onClick={() => {
                       if (!onSubmitLoader) {
-                        setHideModal(false);
                         setOnSubmitLoader(false);
                         setValueObj(getDataObj);
                       }
                     }}
                   />
-                  {valueObj.type == "new" ? (
-                    <>
-                      <PrimaryButton
-                        className={styles.submitBtn}
-                        color="primary"
-                        onClick={() => {
-                          if (!onSubmitLoader) {
-                            setOnSubmitLoader(true);
-                            validation();
-                            // addFile();
-                          }
+                  <PrimaryButton
+                    style={{ marginLeft: 15 }}
+                    className={styles.submitBtn}
+                    color="primary"
+                    onClick={() => {
+                      if (!onSubmitLoader) {
+                        setOnSubmitLoader(true);
+                        validation();
+                        // addFile();
+                      }
+                    }}
+                  >
+                    {onSubmitLoader ? (
+                      <Spinner styles={spinnerStyle} />
+                    ) : (
+                      "Submit"
+                    )}
+                  </PrimaryButton>
+                </div>
+              </div>
+            </Modal>
+          ) : null}
+          {/* Edit/View Popup */}
+          {valueObj.condition && valueObj.type == "edit" ? (
+            <Modal styles={editModalDesign} isOpen={valueObj.condition}>
+              <div className={styles.ackPopup}>
+                {/* Header-Section starts */}
+                <div
+                  style={{
+                    textAlign: "center",
+                    color: "#f68413",
+                    fontSize: 20,
+                    fontWeight: 700,
+                    margin: "14px 0px",
+                    height: "auto",
+                  }}
+                >
+                  View Details
+                </div>
+                {/* Header-Section ends */}
+                {/* Body-Section starts */}
+                <div>
+                  {/* General-Section starts */}
+                  <div
+                    style={{
+                      marginBottom: 20,
+                    }}
+                  >
+                    <Label
+                      style={{
+                        color: "#f68413",
+                        fontSize: 16,
+                        fontWeight: 700,
+                        height: "auto",
+                      }}
+                    >
+                      General Details
+                    </Label>
+
+                    <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Title</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        <Label style={{ width: 650, fontWeight: 400 }}>
+                          {valueObj.Title}
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Department</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        <Label style={{ width: 250, fontWeight: 400 }}>
+                          {valueObj.Department}
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Signatories</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        {/* <Label style={{ width: 250 }}>Signatories</Label> */}
+                        {groupPersonaHTMLBulider(valueObj.Mail)}
+                      </div>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Excluded</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        {/* <Label style={{ width: 250 }}>Excluded</Label> */}
+                        {valueObj.Excluded.length > 0 ? (
+                          groupPersonaHTMLBulider(valueObj.Excluded)
+                        ) : (
+                          <Label style={{ width: 200, fontWeight: 400 }}>
+                            Nil
+                          </Label>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Comments</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        <Label style={{ width: 200, fontWeight: 400 }}>
+                          {valueObj.Comments ? valueObj.Comments : "Nil"}
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                  {/* General-Section ends */}
+                  {/* Document=Section starts */}
+                  <div
+                    style={{
+                      marginBottom: 20,
+                    }}
+                  >
+                    <Label
+                      style={{
+                        color: "#f68413",
+                        fontSize: 16,
+                        fontWeight: 700,
+                        height: "auto",
+                      }}
+                    >
+                      Document Details
+                    </Label>
+
+                    <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Document</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        <Label style={{ width: 650 }}>
+                          <a
+                            href={valueObj.FileLink}
+                            target="_blank"
+                            data-interception="off"
+                          >
+                            {valueObj.FileName}
+                          </a>
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Acknowledged</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        {/* <Label style={{ width: 250 }}>Acknowledged</Label> */}
+                        {valueObj.Obj.ApprovedMembers.length > 0 ? (
+                          groupPersonaHTMLBulider(valueObj.Obj.ApprovedMembers)
+                        ) : (
+                          <Label style={{ width: 200, fontWeight: 400 }}>
+                            Nil
+                          </Label>
+                        )}
+                      </div>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>NotAcknowledged</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        {/* <Label style={{ width: 250 }}>NotAcknowledged</Label> */}
+                        {valueObj.Obj.PendingMembers.length > 0 ? (
+                          groupPersonaHTMLBulider(valueObj.Obj.PendingMembers)
+                        ) : (
+                          <Label style={{ width: 200, fontWeight: 400 }}>
+                            Nil
+                          </Label>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex" }}>
+                        <Label style={{ width: 150 }}>Status</Label>
+                        <Label style={{ width: 10 }}>:</Label>
+                        {/* <Label style={{ width: 200 }}>Status</Label> */}
+                        <>
+                          {valueObj.Obj.Status == "Pending" ? (
+                            <div className={statusDesign.Pending}>
+                              {valueObj.Obj.Status}
+                            </div>
+                          ) : valueObj.Obj.Status == "In Progress" ? (
+                            <div className={statusDesign.InProgress}>
+                              {valueObj.Obj.Status} |{" "}
+                              {getCompletionPercentage(
+                                valueObj.Obj.ApprovedMembers.length,
+                                valueObj.Obj.PendingMembers.length
+                              )}
+                              %
+                            </div>
+                          ) : valueObj.Obj.Status == "Completed" ? (
+                            <div className={statusDesign.Completed}>
+                              {valueObj.Obj.Status}
+                            </div>
+                          ) : (
+                            <div className={statusDesign.Others}>
+                              {valueObj.Obj.QuizStatus}
+                            </div>
+                          )}
+                        </>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Document=Section ends */}
+                  {/* Quiz-Section starts */}
+                  {valueObj.Quiz && (
+                    <div
+                      style={{
+                        marginBottom: 20,
+                      }}
+                    >
+                      <Label
+                        style={{
+                          color: "#f68413",
+                          fontSize: 16,
+                          fontWeight: 700,
+                          height: "auto",
                         }}
                       >
-                        {onSubmitLoader ? (
-                          <Spinner styles={spinnerStyle} />
-                        ) : (
-                          "Submit"
-                        )}
-                      </PrimaryButton>
-                    </>
-                  ) : null}
+                        Quiz Details
+                      </Label>
+
+                      <div style={{ display: "flex" }}>
+                        <div style={{ display: "flex" }}>
+                          <Label style={{ width: 150 }}>Quiz</Label>
+                          <Label style={{ width: 10 }}>:</Label>
+                          <Label style={{ width: 650 }}>
+                            <a
+                              href={valueObj.Quiz}
+                              target="_blank"
+                              data-interception="off"
+                            >
+                              {valueObj.Quiz}
+                            </a>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex" }}>
+                        <div style={{ display: "flex" }}>
+                          <Label style={{ width: 150 }}>Acknowledged</Label>
+                          <Label style={{ width: 10 }}>:</Label>
+                          {/* <Label style={{ width: 250 }}>Acknowledged</Label> */}
+                          {valueObj.Obj.QuizApprovedMembers.length > 0 ? (
+                            groupPersonaHTMLBulider(
+                              valueObj.Obj.QuizApprovedMembers
+                            )
+                          ) : (
+                            <Label style={{ width: 200, fontWeight: 400 }}>
+                              Nil
+                            </Label>
+                          )}
+                        </div>
+                        <div style={{ display: "flex" }}>
+                          <Label style={{ width: 150 }}>NotAcknowledged</Label>
+                          <Label style={{ width: 10 }}>:</Label>
+                          {/* <Label style={{ width: 250 }}>NotAcknowledged</Label> */}
+                          {valueObj.Obj.QuizPendingMembers.length > 0 ? (
+                            groupPersonaHTMLBulider(
+                              valueObj.Obj.QuizPendingMembers
+                            )
+                          ) : (
+                            <Label style={{ width: 200, fontWeight: 400 }}>
+                              Nil
+                            </Label>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex" }}>
+                        <div style={{ display: "flex" }}>
+                          <Label style={{ width: 150 }}>Status</Label>
+                          <Label style={{ width: 10 }}>:</Label>
+                          {/* <Label style={{ width: 200 }}>Status</Label> */}
+                          <>
+                            {valueObj.Obj.QuizStatus == "Pending" ? (
+                              <div className={statusDesign.Pending}>
+                                {valueObj.Obj.QuizStatus}
+                              </div>
+                            ) : valueObj.Obj.QuizStatus == "In Progress" ? (
+                              <div className={statusDesign.InProgress}>
+                                {valueObj.Obj.QuizStatus} |{" "}
+                                {getCompletionPercentage(
+                                  valueObj.Obj.QuizApprovedMembers.length,
+                                  valueObj.Obj.QuizPendingMembers.length
+                                )}
+                                %
+                              </div>
+                            ) : valueObj.Obj.QuizStatus == "Completed" ? (
+                              <div className={statusDesign.Completed}>
+                                {valueObj.Obj.QuizStatus}
+                              </div>
+                            ) : (
+                              <div className={statusDesign.Others}>
+                                {valueObj.Obj.QuizStatus}
+                              </div>
+                            )}
+                          </>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Quiz-Section starts */}
                 </div>
+                {/* Body-Section ends */}
+                {/* Footer-Section starts */}
+                <div className={styles.ackPopupButtonSection}>
+                  <button
+                    className={styles.closeBtn}
+                    onClick={() => {
+                      setValueObj({ ...getDataObj });
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+                {/* Footer-Section ends */}
               </div>
             </Modal>
           ) : null}

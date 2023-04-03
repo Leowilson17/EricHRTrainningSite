@@ -19,7 +19,12 @@ export default class Training extends React.Component<ITrainingProps, {}> {
   }
   public render(): React.ReactElement<ITrainingProps> {
     return (
-      <Maincomponent spcontext={this.props.context} graphContext={graph} />
+      <Maincomponent
+        spcontext={this.props.context}
+        graphContext={graph}
+        docLibName={this.props.docLibName}
+        commentsListName={this.props.commentsListName}
+      />
     );
   }
 }
