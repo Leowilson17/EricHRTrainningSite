@@ -7,12 +7,20 @@ import "@pnp/graph/users";
 import "@pnp/graph/groups";
 import { Spinner, SpinnerSize } from "@fluentui/react";
 
+interface IProps {
+  spcontext: any;
+  graphContext: any;
+  docLibName: string;
+  commentsListName: string;
+}
+
 interface IUsers {
   key: number;
   imageUrl: string;
   text: string;
   ID: number;
   secondaryText: string;
+  department: string;
   isValid: boolean;
   isGroup: boolean;
 }
@@ -23,16 +31,25 @@ interface IAzureGroups {
   groupMembers: any[];
 }
 
-const Maincomponent = (props: any): JSX.Element => {
+const Maincomponent = (props: IProps): JSX.Element => {
   const [ADGroups, setADGroups] = React.useState<IAzureGroups[]>([]);
   const [ADUsers, setADUsers] = React.useState<IUsers[]>([]);
   const [SiteUsers, setSiteUsers] = React.useState<IUsers[]>([]);
+  const [allDepts, setAllDepts] = React.useState<
+    { text: string; key: string }[]
+  >([]);
   const [loader, setLoader] = React.useState(true);
   // function
   // get all users
   const getAllADUsers = () => {
     let _ADUsers: IUsers[] = [];
+    let _depts: { text: string; key: string }[] = [
+      { text: "No Department", key: "No Department" },
+    ];
     graph.users
+      .select(
+        "id,businessPhones,displayName,givenName,jobTitle,mail,mobilePhone,officeLocation,preferredLanguage,surname,userPrincipalName,department"
+      )
       .top(999)
       .get()
       .then((users) => {
@@ -48,19 +65,26 @@ const Maincomponent = (props: any): JSX.Element => {
                 text: user.displayName,
                 ID: null,
                 secondaryText: user.mail,
+                department: user.department ? user.department : "",
                 isValid: true,
                 isGroup: false,
               });
+
+            user.department &&
+              user.department != null &&
+              !_depts.some((dept) => dept.key == user.department) &&
+              _depts.push({ key: user.department, text: user.department });
           });
 
+        setAllDepts([..._depts]);
         setADUsers([..._ADUsers]);
-        getAllADGroups();
+        getAllADGroups(_ADUsers);
       })
       .catch((error) => {
         console.log(error, "getAllADUsers");
       });
   };
-  const getAllADGroups = () => {
+  const getAllADGroups = (ADUsers: IUsers[]) => {
     let _ADGroups: IAzureGroups[] = [];
     graph.groups
       .expand("members")
@@ -76,13 +100,13 @@ const Maincomponent = (props: any): JSX.Element => {
         });
 
         setADGroups([..._ADGroups]);
-        getAllUsers();
+        getAllUsers(ADUsers);
       })
       .catch((error) => {
         console.log(error, "getAllADGroups");
       });
   };
-  const getAllUsers = () => {
+  const getAllUsers = (ADUsers: IUsers[]) => {
     let allPeoples: IUsers[] = [];
     sp.web
       .siteUsers()
@@ -90,6 +114,17 @@ const Maincomponent = (props: any): JSX.Element => {
         _allUsers
           .filter((_user) => _user.Email)
           .forEach((user) => {
+            let deptArr = ADUsers.filter(
+              (ad) => ad.secondaryText == user.Email
+            );
+
+            let department: string =
+              deptArr.length > 0
+                ? deptArr[0].department
+                  ? deptArr[0].department
+                  : ""
+                : "";
+
             user.Email &&
               allPeoples.push({
                 key: 1,
@@ -99,10 +134,12 @@ const Maincomponent = (props: any): JSX.Element => {
                 text: user.Title,
                 ID: user.Id,
                 secondaryText: user.Email,
+                department: department,
                 isValid: true,
                 isGroup: user.PrincipalType == 4,
               });
           });
+
         setSiteUsers([...allPeoples]);
         setLoader(false);
       })
@@ -125,6 +162,9 @@ const Maincomponent = (props: any): JSX.Element => {
       peopleList={SiteUsers}
       spcontext={props.spcontext}
       graphContext={props.graphContext}
+      deptDropdown={allDepts}
+      docLibName={props.docLibName}
+      commentsListName={props.commentsListName}
     />
   );
 };

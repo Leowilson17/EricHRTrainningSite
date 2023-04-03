@@ -41,6 +41,9 @@ import Pagination from "office-ui-fabric-react-pagination";
 import { loadTheme, createTheme, Theme } from "@fluentui/react";
 import { ILabelStyles } from "office-ui-fabric-react";
 
+import alertify from "alertifyjs";
+import "alertifyjs/build/css/alertify.css";
+
 const myTheme = createTheme({
   palette: {
     themePrimary: "#ff5e14",
@@ -67,6 +70,22 @@ const myTheme = createTheme({
     white: "#ffffff",
   },
 });
+
+interface IProps {
+  azureUsers: IPeople[];
+  azureGroups: IAzureGroups[];
+  peopleList: IPeople[];
+  spcontext: any;
+  graphContext: any;
+  docLibName: string;
+  commentsListName: string;
+}
+
+interface IAzureGroups {
+  groupName: string;
+  groupID: string;
+  groupMembers: any[];
+}
 
 interface IPeople {
   key: number;
@@ -123,12 +142,18 @@ let isLoggedUserManager: boolean;
 
 const totalPageItems: number = 10;
 
-const Dashboard = (props: any): JSX.Element => {
+const Dashboard = (props: IProps): JSX.Element => {
   const currentWebSite: string[] =
     props.spcontext.pageContext.web.absoluteUrl.split("/");
 
-  const HRDocName: string = "HRDocuments";
-  const HRCommentsName: string = "HRDocumentComments";
+  // const HRDocName: string = "HRDocuments";
+  // const HRCommentsName: string = "HRDocumentComments";
+
+  const HRDocName: string = props.docLibName;
+  const HRCommentsName: string = props.commentsListName;
+
+  // debugger;
+
   const url: string = `/sites/${
     currentWebSite[currentWebSite.length - 1]
   }/${HRDocName}`;
@@ -984,7 +1009,7 @@ const Dashboard = (props: any): JSX.Element => {
         getDatafromLibrary(_filterKeys);
       })
       .catch((error) => {
-        err(error, "getManagers");
+        errorFunction(error, "getManagers");
       });
   };
   // get Document from Library
@@ -1113,7 +1138,7 @@ const Dashboard = (props: any): JSX.Element => {
         settableLoader(false);
       })
       .catch((error) => {
-        err("getDatafromLibrary", error);
+        errorFunction("getDatafromLibrary", error);
       });
   }
 
@@ -1235,14 +1260,14 @@ const Dashboard = (props: any): JSX.Element => {
       fileNameArr[fileNameArr.length - 2] + "v" + _docVersion;
     let fileName = fileNameArr.join(".");
 
-    let filteredsignatories: any[] = updateData.Mail.filter(
-      (_sign) =>
-        !updateData.Excluded.some(
-          (exclude) => exclude.secondaryText == _sign.secondaryText
-        )
-    );
+    // let filteredsignatories: any[] = updateData.Mail.filter(
+    //   (_sign) =>
+    //     !updateData.Excluded.some(
+    //       (exclude) => exclude.secondaryText == _sign.secondaryText
+    //     )
+    // );
 
-    let approvers: number[] = filteredsignatories.map((people) => people.ID);
+    let approvers: number[] = updateData.Mail.map((people) => people.ID);
 
     let excludedUsers: number[] =
       updateData.Excluded.length > 0
@@ -1250,7 +1275,7 @@ const Dashboard = (props: any): JSX.Element => {
         : [];
 
     let pendingApprovers: string = emailReturnFunction(
-      filteredsignatories,
+      updateData.Mail,
       updateData.Excluded
     );
 
@@ -1286,12 +1311,12 @@ const Dashboard = (props: any): JSX.Element => {
               getManagers();
             })
             .catch((error) => {
-              err(error, "addFile");
+              errorFunction(error, "addFile");
             });
         });
       })
       .catch((error) => {
-        err("addFile", error);
+        errorFunction("addFile", error);
       });
   }
 
@@ -1326,6 +1351,9 @@ const Dashboard = (props: any): JSX.Element => {
             (mail: string) =>
               !excludedUsers.some((exclude) => exclude.secondaryText == mail)
           );
+          // _pendingApprovers = _pendingApprovers.filter(
+          //   (user) => user != loggedUserEmail
+          // );
           return _pendingApprovers.join(";");
         }
       }
@@ -1458,10 +1486,33 @@ const Dashboard = (props: any): JSX.Element => {
   };
 
   // error handling
-  function err(msg: string, error: any): void {
+  function errorFunction(msg: string, error: any): void {
     console.log(msg, error);
+    alertify.set("notifier", "position", "top-right");
+    alertify.error("Something when error, please contact system admin.");
+    resetAllFunction();
   }
 
+  const resetAllFunction = (): void => {
+    setAcknowledgePopup({
+      condition: false,
+      obj: null,
+      isFileOpened: false,
+      userName: "",
+      userNameValidation: false,
+      comments: "",
+      commentsValidation: false,
+      overAllValidation: false,
+    });
+    setHideDelModal({
+      condition: false,
+      targetID: null,
+    });
+    setValueObj(getDataObj);
+    setHideModal(false);
+    setOnSubmitLoader(false);
+    settableLoader(false);
+  };
   const acknowledgePopupOnChangeHandler = (
     key: string,
     value: string
@@ -1550,7 +1601,7 @@ const Dashboard = (props: any): JSX.Element => {
           );
         })
         .catch((error) => {
-          err(error, "updateFunction");
+          errorFunction(error, "updateFunction");
         });
     }
   };
@@ -1583,7 +1634,7 @@ const Dashboard = (props: any): JSX.Element => {
         getManagers();
       })
       .catch((error) => {
-        err(error, "addAcknowlegdementComments");
+        errorFunction(error, "addAcknowlegdementComments");
       });
   };
 
