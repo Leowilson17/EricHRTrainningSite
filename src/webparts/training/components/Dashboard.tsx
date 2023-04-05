@@ -722,7 +722,7 @@ const Dashboard = (props: IProps): JSX.Element => {
               item.AcknowledgementType == "Document"
                 ? "InsertSignatureLine"
                 : item.AcknowledgementType == "Quiz"
-                ? "TaskLogo"
+                ? "Questionnaire"
                 : "DocumentApproval"
             }
             className={
@@ -1464,9 +1464,10 @@ const Dashboard = (props: IProps): JSX.Element => {
     let filteredSignatories =
       updateData.Department != "No Department"
         ? updateData.Mail.filter(
-            (user) => user.department == updateData.Department
+            (user) => user.department.trim() == updateData.Department.trim()
           )
         : updateData.Mail;
+
     let pendingApprovers: string = emailReturnFunction(
       filteredSignatories,
       updateData.Excluded
@@ -2372,7 +2373,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                         {valueObj.Excluded.length > 0 ? (
                           groupPersonaHTMLBulider(valueObj.Excluded)
                         ) : (
-                          <Label style={{ width: 200, fontWeight: 400 }}>
+                          <Label style={{ width: 250, fontWeight: 400 }}>
                             Nil
                           </Label>
                         )}
@@ -2383,7 +2384,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       <div style={{ display: "flex" }}>
                         <Label style={{ width: 150 }}>Comments</Label>
                         <Label style={{ width: 10 }}>:</Label>
-                        <Label style={{ width: 200, fontWeight: 400 }}>
+                        <Label style={{ width: 250, fontWeight: 400 }}>
                           {valueObj.Comments ? valueObj.Comments : "Nil"}
                         </Label>
                       </div>
@@ -2431,19 +2432,19 @@ const Dashboard = (props: IProps): JSX.Element => {
                         {valueObj.Obj.ApprovedMembers.length > 0 ? (
                           groupPersonaHTMLBulider(valueObj.Obj.ApprovedMembers)
                         ) : (
-                          <Label style={{ width: 200, fontWeight: 400 }}>
+                          <Label style={{ width: 250, fontWeight: 400 }}>
                             Nil
                           </Label>
                         )}
                       </div>
                       <div style={{ display: "flex" }}>
-                        <Label style={{ width: 150 }}>NotAcknowledged</Label>
+                        <Label style={{ width: 150 }}>Not acknowledged</Label>
                         <Label style={{ width: 10 }}>:</Label>
                         {/* <Label style={{ width: 250 }}>NotAcknowledged</Label> */}
                         {valueObj.Obj.PendingMembers.length > 0 ? (
                           groupPersonaHTMLBulider(valueObj.Obj.PendingMembers)
                         ) : (
-                          <Label style={{ width: 200, fontWeight: 400 }}>
+                          <Label style={{ width: 250, fontWeight: 400 }}>
                             Nil
                           </Label>
                         )}
@@ -2527,13 +2528,13 @@ const Dashboard = (props: IProps): JSX.Element => {
                               valueObj.Obj.QuizApprovedMembers
                             )
                           ) : (
-                            <Label style={{ width: 200, fontWeight: 400 }}>
+                            <Label style={{ width: 250, fontWeight: 400 }}>
                               Nil
                             </Label>
                           )}
                         </div>
                         <div style={{ display: "flex" }}>
-                          <Label style={{ width: 150 }}>NotAcknowledged</Label>
+                          <Label style={{ width: 150 }}>Not acknowledged</Label>
                           <Label style={{ width: 10 }}>:</Label>
                           {/* <Label style={{ width: 250 }}>NotAcknowledged</Label> */}
                           {valueObj.Obj.QuizPendingMembers.length > 0 ? (
@@ -2541,7 +2542,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                               valueObj.Obj.QuizPendingMembers
                             )
                           ) : (
-                            <Label style={{ width: 200, fontWeight: 400 }}>
+                            <Label style={{ width: 250, fontWeight: 400 }}>
                               Nil
                             </Label>
                           )}
