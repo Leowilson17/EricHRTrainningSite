@@ -1,40 +1,48 @@
 #workbenchPageContent {
-    max-width: 100%;
+  max-width: 100%;
 }
 
 .content_3f3fd3c2,
 .CanvasZone {
-    padding: 0 !important;
-    max-width: 100% !important;
+  padding: 0 !important;
+  max-width: 100% !important;
 }
 
 .pagination .ms-Button {
-    border: none !important;
-    background: none !important;
-    min-width: 0 !important;
-    padding: 5px !important;
+  border: none !important;
+  background: none !important;
+  min-width: 0 !important;
+  padding: 5px !important;
 }
 
 .pagination .ms-Button.ms-Button--primary .ms-Button-label {
-    color: #e47100;
+  color: #e47100;
 }
 
 .alertify-notifier .ajs-message.ajs-success {
-    background: #03787c;
-    color: #fff;
-    border: 1px solid #fff;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    -webkit-box-shadow: -2px 10px 10px -10px rgba(255, 255, 255, 1);
-    -moz-box-shadow: -2px 10px 10px -10px rgba(255, 255, 255, 1);
-    box-shadow: -2px 10px 10px -10px rgba(255, 255, 255, 1);
+  background: #03787c;
+  color: #fff;
+  border: 1px solid #fff;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-box-shadow: -2px 10px 10px -10px #ffffff;
+  -moz-box-shadow: -2px 10px 10px -10px #ffffff;
+  box-shadow: -2px 10px 10px -10px #ffffff;
 }
 
 .alertify-notifier .ajs-message.ajs-error {
-    background: #faa332;
-    color: #fff;
-    border: 1px solid #fff;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    -webkit-box-shadow: -2px 10px 10px -10px rgba(255, 255, 255, 1);
-    -moz-box-shadow: -2px 10px 10px -10px rgba(255, 255, 255, 1);
-    box-shadow: -2px 10px 10px -10px rgba(255, 255, 255, 1);
+  background: #faa332;
+  color: #fff;
+  border: 1px solid #fff;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-box-shadow: -2px 10px 10px -10px #ffffff;
+  -moz-box-shadow: -2px 10px 10px -10px #ffffff;
+  box-shadow: -2px 10px 10px -10px #ffffff;
+}
+
+.ms-BasePicker-text {
+  border: 1px solid #cbd6e2 !important;
+}
+
+.ms-BasePicker-input {
+  background-color: #f5f8fa !important;
 }

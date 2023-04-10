@@ -42,6 +42,10 @@ import { ILabelStyles } from "office-ui-fabric-react";
 
 import alertify from "alertifyjs";
 import "alertifyjs/build/css/alertify.css";
+import {
+  PeoplePicker,
+  PrincipalType,
+} from "@pnp/spfx-controls-react/lib/PeoplePicker";
 
 const myTheme = createTheme({
   palette: {
@@ -94,6 +98,7 @@ interface IPeople {
   isValid: boolean;
   ID: number;
   secondaryText: string;
+  department: string;
   text: string;
 }
 
@@ -101,7 +106,7 @@ interface INewData {
   condition: boolean;
   type: string;
   Id: number;
-  Department: string;
+  Department: string[];
   Title: string;
   Mail: IPeople[];
   Excluded: IPeople[];
@@ -117,7 +122,7 @@ interface INewData {
 interface IItems {
   ID: number;
   AcknowledgementType: string;
-  Department: string;
+  Department: string[];
   Title: string;
   Status: string;
   QuizStatus: string;
@@ -164,6 +169,7 @@ let isLoggedUserManager: boolean;
 const totalPageItems: number = 10;
 
 const Dashboard = (props: IProps): JSX.Element => {
+  const deptDowndown = [{ key: "All", text: "All" }, ...props.deptDropdown];
   const currentWebSite: string[] =
     props.spcontext.pageContext.web.absoluteUrl.split("/");
 
@@ -184,7 +190,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   // variables
   let filterKeys: IFilters = {
     Title: "",
-    Department: "No Department",
+    Department: "All",
     Status: "All",
     Approvers: "",
     submittedDate: null,
@@ -195,7 +201,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     condition: false,
     type: "",
     Id: 0,
-    Department: "",
+    Department: [],
     Title: "",
     Mail: [],
     Excluded: [],
@@ -254,6 +260,19 @@ const Dashboard = (props: IProps): JSX.Element => {
       key: "column1",
       name: "File Name",
       fieldName: "Title",
+      minWidth: 100,
+      maxWidth: 200,
+      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+        _onColumnClick(ev, column);
+      },
+      onRender: (item) => {
+        return <div style={{ cursor: "default" }}>{item.Title}</div>;
+      },
+    },
+    {
+      key: "column2",
+      name: "Department",
+      fieldName: "Department",
       minWidth: 200,
       maxWidth: 400,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
@@ -261,36 +280,8 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
       onRender: (item) => {
         return (
-          <div style={{ cursor: "default" }}>{item.Title}</div>
-          // <a
-          //   title={item.Title}
-          //   href={item.Link}
-          //   target="_blank"
-          //   data-interception="off"
-          //   style={{
-          //     color: "#000",
-          //     textDecoration: "none",
-          //     fontSize: 13,
-          //     marginTop: 5,
-          //   }}
-          // >
-          //   {item.Title}
-          // </a>
-        );
-      },
-    },
-    {
-      key: "column2",
-      name: "Department",
-      fieldName: "Department",
-      minWidth: 150,
-      maxWidth: 200,
-      onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-        _onColumnClick(ev, column);
-      },
-      onRender: (item) => {
-        return (
           <div
+            title={item.Department ? item.Department : "No Department"}
             style={{
               color: "#000",
               fontSize: 13,
@@ -796,7 +787,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     },
   };
   const popupDropdownStyles: Partial<IDropdownStyles> = {
-    root: { margin: "0 13px", width: "90%" },
+    root: { margin: "0 13px", width: "82%" },
     title: {
       backgroundColor: "#f5f8fa !important",
       border: "1px solid #cbd6e2 !important",
@@ -805,7 +796,7 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
     },
     callout: {
-      maxHeight: 300,
+      maxHeight: "300px !important",
     },
     dropdownItem: {
       backgroundColor: "#F5F5F7",
@@ -886,7 +877,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   const newModalDesign: Partial<IModalStyles> = {
     main: {
       padding: 10,
-      width: 505,
+      width: "35%",
       height: "auto",
       borderRadius: 5,
     },
@@ -1191,7 +1182,14 @@ const Dashboard = (props: IProps): JSX.Element => {
                 tempArr = props.azureUsers.filter((users) => {
                   return val && users.secondaryText == val;
                 });
-                if (tempArr.length > 0) pendingMembers.push(tempArr[0]);
+                if (
+                  tempArr.length > 0 &&
+                  !pendingMembers.some(
+                    (user) => user.secondaryText == tempArr[0].secondaryText
+                  )
+                ) {
+                  pendingMembers.push(tempArr[0]);
+                }
               });
 
           //approvedMembers
@@ -1203,7 +1201,14 @@ const Dashboard = (props: IProps): JSX.Element => {
                 tempArr = props.azureUsers.filter((users) => {
                   return val && users.secondaryText == val;
                 });
-                if (tempArr.length > 0) approvedMembers.push(tempArr[0]);
+                if (
+                  tempArr.length > 0 &&
+                  !approvedMembers.some(
+                    (user) => user.secondaryText == tempArr[0].secondaryText
+                  )
+                ) {
+                  approvedMembers.push(tempArr[0]);
+                }
               });
 
           //_quizPendingMembers
@@ -1215,7 +1220,14 @@ const Dashboard = (props: IProps): JSX.Element => {
                 tempArr = props.azureUsers.filter((users) => {
                   return val && users.secondaryText == val;
                 });
-                if (tempArr.length > 0) _quizPendingMembers.push(tempArr[0]);
+                if (
+                  tempArr.length > 0 &&
+                  !_quizPendingMembers.some(
+                    (user) => user.secondaryText == tempArr[0].secondaryText
+                  )
+                ) {
+                  _quizPendingMembers.push(tempArr[0]);
+                }
               });
 
           //_quizApprovedMembers
@@ -1227,7 +1239,14 @@ const Dashboard = (props: IProps): JSX.Element => {
                 tempArr = props.azureUsers.filter((users) => {
                   return val && users.secondaryText == val;
                 });
-                if (tempArr.length > 0) _quizApprovedMembers.push(tempArr[0]);
+                if (
+                  tempArr.length > 0 &&
+                  !_quizApprovedMembers.some(
+                    (user) => user.secondaryText == tempArr[0].secondaryText
+                  )
+                ) {
+                  _quizApprovedMembers.push(tempArr[0]);
+                }
               });
 
           //_Signatories
@@ -1237,7 +1256,14 @@ const Dashboard = (props: IProps): JSX.Element => {
               tempArr = allPeoples.filter((arr) => {
                 return arr.ID == val;
               });
-              if (tempArr.length > 0) _Signatories.push(tempArr[0]);
+              if (
+                tempArr.length > 0 &&
+                !_Signatories.some(
+                  (user) => user.secondaryText == tempArr[0].secondaryText
+                )
+              ) {
+                _Signatories.push(tempArr[0]);
+              }
             });
 
           //_Excluded
@@ -1247,7 +1273,13 @@ const Dashboard = (props: IProps): JSX.Element => {
               tempArr = allPeoples.filter((arr) => {
                 return arr.ID == val;
               });
-              if (tempArr.length > 0) _Excluded.push(tempArr[0]);
+              if (
+                tempArr.length > 0 &&
+                !_Excluded.some(
+                  (user) => user.secondaryText == tempArr[0].secondaryText
+                )
+              )
+                _Excluded.push(tempArr[0]);
             });
 
           //acknowledgementType
@@ -1264,7 +1296,9 @@ const Dashboard = (props: IProps): JSX.Element => {
           getDataArray.push({
             ID: data.ListItemAllFields["Id"],
             AcknowledgementType: acknowledgementType,
-            Department: data.ListItemAllFields["Department"],
+            Department: data.ListItemAllFields["Department"]
+              ? data.ListItemAllFields["Department"].split(";").join(" , ")
+              : "Any Department",
             Title: data.Name,
             Status: data.ListItemAllFields["Status"],
             QuizStatus: data.ListItemAllFields["QuizStatus"],
@@ -1336,9 +1370,9 @@ const Dashboard = (props: IProps): JSX.Element => {
         arr.Title.toLowerCase().includes(tempFilter.Title.toLowerCase())
       );
     }
-    if (tempFilter.Department != "No Department") {
-      tempArr = tempArr.filter(
-        (arr) => arr.Department == tempFilter.Department
+    if (tempFilter.Department != "All") {
+      tempArr = tempArr.filter((arr) =>
+        arr.Department.some((dept) => dept == tempFilter.Department)
       );
     }
 
@@ -1401,9 +1435,16 @@ const Dashboard = (props: IProps): JSX.Element => {
   }
 
   // modal Onchangehandler
-  function Onchangehandler(key, val) {
-    let getDatatempArray = valueObj;
-    getDatatempArray[key] = val;
+  function Onchangehandler(key: string, val: any) {
+    let getDatatempArray: INewData = { ...valueObj };
+    if (key == "Department") {
+      getDatatempArray.Department = val.selected
+        ? [...getDatatempArray.Department, val.key as string]
+        : getDatatempArray.Department.filter((key) => key !== val.key);
+      getDatatempArray.Department.sort();
+    } else {
+      getDatatempArray[key] = val;
+    }
     getDatatempArray.Valid = "";
     setValueObj({ ...getDatatempArray });
   }
@@ -1422,7 +1463,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     } else if (!checkObj.File) {
       isError = true;
       checkObj.Valid = "* Please Choose File";
-    } else if (checkObj.Mail.length == 0) {
+    } else if (checkObj.Department.length == 0 && checkObj.Mail.length == 0) {
       isError = true;
       checkObj.Valid = "* Please Select Signatories";
     }
@@ -1454,31 +1495,94 @@ const Dashboard = (props: IProps): JSX.Element => {
       fileNameArr[fileNameArr.length - 2] + "v" + _docVersion;
     let fileName = fileNameArr.join(".");
 
-    let approvers: number[] = updateData.Mail.map((people) => people.ID);
+    let deptUsersArr = [];
+    let filterdDeptUsers = [];
 
-    let excludedUsers: number[] =
-      updateData.Excluded.length > 0
-        ? updateData.Excluded.map((people) => people.ID)
-        : [];
+    if (updateData.Department.length > 0) {
+      for (let dept of updateData.Department) {
+        deptUsersArr = [
+          ...deptUsersArr,
+          ...props.azureUsers.filter((users) => users.department == dept),
+        ];
+      }
 
-    let filteredSignatories =
-      updateData.Department != "No Department"
-        ? updateData.Mail.filter(
-            (user) => user.department.trim() == updateData.Department.trim()
-          )
-        : updateData.Mail;
+      if (deptUsersArr.length > 0) {
+        for (let user of deptUsersArr) {
+          if (!filterdDeptUsers.some((_user) => _user == user.secondaryText)) {
+            filterdDeptUsers.push(user);
+          }
+        }
+      }
+    }
 
-    let pendingApprovers: string = emailReturnFunction(
-      filteredSignatories,
-      updateData.Excluded
+    // let approvers: number[] = updateData.Mail.map((people) => people.ID);
+    let approvers: number[] = updateData.Mail.map((people) => people.id);
+
+    let excludedUsers: number[] = updateData.Excluded.map(
+      (people) => people.id
     );
 
-    if (filteredSignatories.length > 0 && pendingApprovers) {
+    let formatedApprovers = [];
+    let formatedExclude = [];
+
+    for (let appr of updateData.Mail) {
+      formatedApprovers.push({
+        key: 1,
+        imageUrl:
+          `/_layouts/15/userphoto.aspx?size=S&accountname=` +
+          `${appr.secondaryText}`,
+        text: appr.text,
+        ID: appr.id,
+        isGroup: false,
+        isValid: true,
+
+        secondaryText: appr.secondaryText,
+        department: "",
+      });
+    }
+    for (let exclude of updateData.Excluded) {
+      formatedExclude.push({
+        key: 1,
+        imageUrl:
+          `/_layouts/15/userphoto.aspx?size=S&accountname=` +
+          `${exclude.secondaryText}`,
+        isGroup: false,
+        isValid: true,
+        ID: exclude.id,
+        secondaryText: exclude.secondaryText,
+        department: "",
+        text: exclude.text,
+      });
+    }
+
+    let validUsers = [];
+
+    for (let vUsers of [...filterdDeptUsers, ...formatedApprovers]) {
+      if (
+        !validUsers.some((user) => user.secondaryText == vUsers.secondaryText)
+      ) {
+        validUsers.push(vUsers);
+      }
+    }
+
+    let pendingApprovers: any = (
+      formatedExclude.length > 0
+        ? validUsers.filter(
+            (people) =>
+              !formatedExclude.some(
+                (exc) => exc.secondaryText == people.secondaryText
+              )
+          )
+        : validUsers
+    ).map((pending) => pending.secondaryText);
+
+    // if (filteredSignatories.length > 0 && pendingApprovers) {
+    if (pendingApprovers.length > 0) {
       let responseData = {
         DocTitle: updateData.Title.trim(),
         DocVersion: _docVersion,
         Comments: updateData.Comments.trim(),
-        Department: updateData.Department.trim(),
+        Department: updateData.Department.join(";").trim(),
         FileName: updateData.File["name"],
         Quiz: updateData.Quiz,
         SignatoriesId: {
@@ -1487,8 +1591,12 @@ const Dashboard = (props: IProps): JSX.Element => {
         ExcludedId: {
           results: excludedUsers,
         },
-        NotAcknowledgedEmails: pendingApprovers,
-        QuizNotAcknowledgedEmails: updateData.Quiz ? pendingApprovers : "",
+        NotAcknowledgedEmails: pendingApprovers.join(";").trim(),
+        QuizNotAcknowledgedEmails: updateData.Quiz
+          ? pendingApprovers.join(";").trim()
+          : "",
+        AcknowledgedEmails: "",
+        QuizAcknowledgedEmails: "",
         Status: "Pending",
         QuizStatus: updateData.Quiz ? "Pending" : "No Quiz",
         SubmittedOn: moment().format("YYYY-MM-DD"),
@@ -1874,10 +1982,10 @@ const Dashboard = (props: IProps): JSX.Element => {
           width: 250,
         }}
       >
-        {data.map((app, index) => {
+        {data.map((user, index) => {
           if (index < 3) {
             return (
-              <div title={valueObj.Mail[index].text}>
+              <div title={user.text}>
                 <Persona
                   styles={{
                     root: {
@@ -1890,7 +1998,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   showInitialsUntilImageLoads={true}
                   imageUrl={
                     "/_layouts/15/userphoto.aspx?size=S&username=" +
-                    `${data[index].secondaryText}`
+                    `${user.secondaryText}`
                   }
                 />
               </div>
@@ -1948,6 +2056,21 @@ const Dashboard = (props: IProps): JSX.Element => {
 
   return (
     <ThemeProvider theme={myTheme}>
+      {/* <div className={styles.clsPeoplepicker}>
+        <PeoplePicker
+          context={props.spcontext}
+          personSelectionLimit={500}
+          groupName={""} // Leave this blank in case you want to filter from all users
+          showtooltip={true}
+          ensureUser={true}
+          showHiddenInUI={false}
+          principalTypes={[PrincipalType.User]}
+          selectedItems={(user) => {
+            console.log(user);
+          }}
+          resolveDelay={10}
+        />
+      </div> */}
       {tableLoader ? (
         <div style={{ display: "flex", justifyContent: "center" }}>
           <Spinner />
@@ -1978,7 +2101,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   <div>
                     <Label>Department</Label>
                     <Dropdown
-                      options={props.deptDropdown}
+                      options={deptDowndown}
                       styles={dropdownStyles}
                       selectedKey={FilterKeys.Department}
                       onChange={(e, option) => {
@@ -2068,7 +2191,8 @@ const Dashboard = (props: IProps): JSX.Element => {
                         _getDataObj.condition = true;
                         _getDataObj.Id = 0;
                         _getDataObj.type = "new";
-                        _getDataObj.Department = "No Department";
+                        // _getDataObj.Department = "No Department";
+                        _getDataObj.Department = [];
                         setValueObj({ ..._getDataObj });
                       }}
                     />
@@ -2125,27 +2249,6 @@ const Dashboard = (props: IProps): JSX.Element => {
 
                 {/* details section */}
                 <div>
-                  {/* department */}
-                  <div
-                    className={styles.detailsSection}
-                    style={{ alignItems: "center" }}
-                  >
-                    <div>
-                      <Label>
-                        Department <span style={{ color: "red" }}>*</span>
-                      </Label>
-                    </div>
-                    <div style={{ width: 0 }}>:</div>
-                    <Dropdown
-                      options={props.deptDropdown}
-                      dropdownWidth={"auto"}
-                      styles={popupDropdownStyles}
-                      selectedKey={valueObj.Department}
-                      onChange={(e, option) => {
-                        Onchangehandler("Department", option["text"]);
-                      }}
-                    />
-                  </div>
                   {/* title */}
                   <div
                     className={styles.detailsSection}
@@ -2188,15 +2291,59 @@ const Dashboard = (props: IProps): JSX.Element => {
                       />
                     </div>
                   </div>
+                  {/* department */}
+                  <div
+                    className={styles.detailsSection}
+                    style={{ alignItems: "center" }}
+                  >
+                    <div>
+                      <Label>
+                        Department
+                        {/* <span style={{ color: "red" }}>*</span> */}
+                      </Label>
+                    </div>
+                    <div style={{ width: 0 }}>:</div>
+                    <Dropdown
+                      title={valueObj.Department.join(",")}
+                      options={props.deptDropdown}
+                      // dropdownWidth={"auto"}
+                      multiSelect={true}
+                      styles={popupDropdownStyles}
+                      selectedKeys={valueObj.Department}
+                      onChange={(e, option) => {
+                        console.log(option);
+                        Onchangehandler("Department", option);
+                      }}
+                    />
+                  </div>
                   {/* people picker */}
                   <div className={styles.detailsSection}>
                     <div>
                       <Label>
-                        Signatories <span style={{ color: "red" }}>*</span>
+                        Signatories{" "}
+                        {valueObj.Department.length == 0 ? (
+                          <span style={{ color: "red" }}>*</span>
+                        ) : null}
                       </Label>
                     </div>
+
                     <div>:</div>
-                    <NormalPeoplePicker
+                    <div className={styles.clsPeoplepicker}>
+                      <PeoplePicker
+                        context={props.spcontext}
+                        personSelectionLimit={500}
+                        groupName={""}
+                        showtooltip={true}
+                        ensureUser={true}
+                        showHiddenInUI={false}
+                        principalTypes={[PrincipalType.User]}
+                        selectedItems={(user) => {
+                          Onchangehandler("Mail", user);
+                        }}
+                        resolveDelay={10}
+                      />
+                    </div>
+                    {/* <NormalPeoplePicker
                       styles={peoplePickerStyle}
                       onResolveSuggestions={GetUserDetails}
                       itemLimit={10}
@@ -2204,7 +2351,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       onChange={(selectedUser) => {
                         Onchangehandler("Mail", selectedUser);
                       }}
-                    />
+                    /> */}
                   </div>
 
                   {/* people picker */}
@@ -2213,7 +2360,22 @@ const Dashboard = (props: IProps): JSX.Element => {
                       <Label>Excluded</Label>
                     </div>
                     <div>:</div>
-                    <NormalPeoplePicker
+                    <div className={styles.clsPeoplepicker}>
+                      <PeoplePicker
+                        context={props.spcontext}
+                        personSelectionLimit={500}
+                        groupName={""}
+                        showtooltip={true}
+                        ensureUser={true}
+                        showHiddenInUI={false}
+                        principalTypes={[PrincipalType.User]}
+                        selectedItems={(user) => {
+                          Onchangehandler("Excluded", user);
+                        }}
+                        resolveDelay={10}
+                      />
+                    </div>
+                    {/* <NormalPeoplePicker
                       styles={peoplePickerStyle}
                       onResolveSuggestions={GetUserDetailsUserOnly}
                       itemLimit={1000}
@@ -2221,7 +2383,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       onChange={(selectedUser) => {
                         Onchangehandler("Excluded", selectedUser);
                       }}
-                    />
+                    /> */}
                   </div>
 
                   {/* Quiz Section */}
@@ -2353,7 +2515,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       <div style={{ display: "flex" }}>
                         <Label style={{ width: 150 }}>Department</Label>
                         <Label style={{ width: 10 }}>:</Label>
-                        <Label style={{ width: 250, fontWeight: 400 }}>
+                        <Label style={{ width: 690, fontWeight: 400 }}>
                           {valueObj.Department}
                         </Label>
                       </div>
@@ -2364,7 +2526,13 @@ const Dashboard = (props: IProps): JSX.Element => {
                         <Label style={{ width: 150 }}>Signatories</Label>
                         <Label style={{ width: 10 }}>:</Label>
                         {/* <Label style={{ width: 250 }}>Signatories</Label> */}
-                        {groupPersonaHTMLBulider(valueObj.Mail)}
+                        {valueObj.Mail.length > 0 ? (
+                          groupPersonaHTMLBulider(valueObj.Mail)
+                        ) : (
+                          <Label style={{ width: 250, fontWeight: 400 }}>
+                            N/A
+                          </Label>
+                        )}
                       </div>
                       <div style={{ display: "flex" }}>
                         <Label style={{ width: 150 }}>Excluded</Label>
@@ -2374,7 +2542,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                           groupPersonaHTMLBulider(valueObj.Excluded)
                         ) : (
                           <Label style={{ width: 250, fontWeight: 400 }}>
-                            Nil
+                            N/A
                           </Label>
                         )}
                       </div>
@@ -2385,7 +2553,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                         <Label style={{ width: 150 }}>Comments</Label>
                         <Label style={{ width: 10 }}>:</Label>
                         <Label style={{ width: 250, fontWeight: 400 }}>
-                          {valueObj.Comments ? valueObj.Comments : "Nil"}
+                          {valueObj.Comments ? valueObj.Comments : "N/A"}
                         </Label>
                       </div>
                     </div>
@@ -2433,7 +2601,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                           groupPersonaHTMLBulider(valueObj.Obj.ApprovedMembers)
                         ) : (
                           <Label style={{ width: 250, fontWeight: 400 }}>
-                            Nil
+                            N/A
                           </Label>
                         )}
                       </div>
@@ -2445,7 +2613,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                           groupPersonaHTMLBulider(valueObj.Obj.PendingMembers)
                         ) : (
                           <Label style={{ width: 250, fontWeight: 400 }}>
-                            Nil
+                            N/A
                           </Label>
                         )}
                       </div>
@@ -2529,7 +2697,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                             )
                           ) : (
                             <Label style={{ width: 250, fontWeight: 400 }}>
-                              Nil
+                              N/A
                             </Label>
                           )}
                         </div>
@@ -2543,7 +2711,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                             )
                           ) : (
                             <Label style={{ width: 250, fontWeight: 400 }}>
-                              Nil
+                              N/A
                             </Label>
                           )}
                         </div>

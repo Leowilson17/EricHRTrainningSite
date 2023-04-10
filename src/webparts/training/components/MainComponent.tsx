@@ -43,9 +43,7 @@ const Maincomponent = (props: IProps): JSX.Element => {
   // get all users
   const getAllADUsers = () => {
     let _ADUsers: IUsers[] = [];
-    let _depts: { text: string; key: string }[] = [
-      { text: "No Department", key: "No Department" },
-    ];
+    let _depts: { text: string; key: string }[] = [];
     graph.users
       .select(
         "id,businessPhones,displayName,givenName,jobTitle,mail,mobilePhone,officeLocation,preferredLanguage,surname,userPrincipalName,department"
@@ -75,6 +73,16 @@ const Maincomponent = (props: IProps): JSX.Element => {
               !_depts.some((dept) => dept.key == user.department) &&
               _depts.push({ key: user.department, text: user.department });
           });
+
+        _depts.sort((a, b) => {
+          if (a.text.toLowerCase() < b.text.toLowerCase()) {
+            return -1;
+          }
+          if (a.text.toLowerCase() > b.text.toLowerCase()) {
+            return 1;
+          }
+          return 0;
+        });
 
         setAllDepts([..._depts]);
         setADUsers([..._ADUsers]);
