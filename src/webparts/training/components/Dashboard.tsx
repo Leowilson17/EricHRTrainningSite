@@ -266,7 +266,19 @@ const Dashboard = (props: IProps): JSX.Element => {
         _onColumnClick(ev, column);
       },
       onRender: (item) => {
-        return <div style={{ cursor: "default" }}>{item.Title}</div>;
+        return (
+          <div
+            title={item.Title}
+            style={{
+              fontWeight: 600,
+              color: "#000",
+              fontSize: 13,
+              marginTop: 5,
+            }}
+          >
+            {item.Title}
+          </div>
+        );
       },
     },
     {
@@ -334,7 +346,7 @@ const Dashboard = (props: IProps): JSX.Element => {
       name: "Submitted On",
       fieldName: "created",
       minWidth: 100,
-      maxWidth: 150,
+      maxWidth: 200,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
@@ -349,7 +361,7 @@ const Dashboard = (props: IProps): JSX.Element => {
       name: "Status for Document",
       fieldName: "Status",
       minWidth: 150,
-      maxWidth: 200,
+      maxWidth: 150,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
@@ -380,7 +392,7 @@ const Dashboard = (props: IProps): JSX.Element => {
       name: "Signatories",
       fieldName: "Approvers",
       minWidth: 150,
-      maxWidth: 200,
+      maxWidth: 150,
       onRender: (data: IItems) => {
         return (
           data.Signatories.length > 0 && (
@@ -463,188 +475,12 @@ const Dashboard = (props: IProps): JSX.Element => {
         );
       },
     },
-    // {
-    //   key: "column6",
-    //   name: "Acknowledged",
-    //   fieldName: "ApprovedMembers",
-    //   minWidth: 150,
-    //   maxWidth: 150,
-    //   onRender: (data: any) => {
-    //     return (
-    //       data.ApprovedMembers.length > 0 && (
-    //         <>
-    //           {
-    //             <div
-    //               style={{
-    //                 display: "flex",
-    //                 alignItems: "center",
-    //                 justifyContent: "flex-start",
-    //                 cursor: "pointer",
-    //               }}
-    //             >
-    //               {data.ApprovedMembers.map((app, index) => {
-    //                 if (index < 3) {
-    //                   return (
-    //                     <div title={data.ApprovedMembers[index].text}>
-    //                       <Persona
-    //                         styles={{
-    //                           root: {
-    //                             display: "inline",
-    //                           },
-    //                         }}
-    //                         showOverflowTooltip
-    //                         size={PersonaSize.size24}
-    //                         presence={PersonaPresence.none}
-    //                         showInitialsUntilImageLoads={true}
-    //                         imageUrl={
-    //                           "/_layouts/15/userphoto.aspx?size=S&username=" +
-    //                           `${data.ApprovedMembers[index].secondaryText}`
-    //                         }
-    //                       />
-    //                     </div>
-    //                   );
-    //                 }
-    //               })}
-
-    //               {data.ApprovedMembers.length > 3 ? (
-    //                 <div>
-    //                   <TooltipHost
-    //                     content={
-    //                       <ul style={{ margin: 10, padding: 0 }}>
-    //                         {data.ApprovedMembers.map((DName) => {
-    //                           return (
-    //                             <li style={{ listStyleType: "none" }}>
-    //                               <div style={{ display: "flex" }}>
-    //                                 <Persona
-    //                                   showOverflowTooltip
-    //                                   size={PersonaSize.size24}
-    //                                   presence={PersonaPresence.none}
-    //                                   showInitialsUntilImageLoads={true}
-    //                                   imageUrl={
-    //                                     "/_layouts/15/userphoto.aspx?size=S&username=" +
-    //                                     `${DName.secondaryText}`
-    //                                   }
-    //                                 />
-    //                                 <Label style={{ marginLeft: 10 }}>
-    //                                   {DName.text}
-    //                                 </Label>
-    //                               </div>
-    //                             </li>
-    //                           );
-    //                         })}
-    //                       </ul>
-    //                     }
-    //                     delay={TooltipDelay.zero}
-    //                     directionalHint={DirectionalHint.bottomCenter}
-    //                     styles={{ root: { display: "inline-block" } }}
-    //                   >
-    //                     <div className={styles.extraPeople}>
-    //                       {data.ApprovedMembers.length}
-    //                     </div>
-    //                   </TooltipHost>
-    //                 </div>
-    //               ) : null}
-    //             </div>
-    //           }
-    //         </>
-    //       )
-    //     );
-    //   },
-    // },
-    // {
-    //   key: "column7",
-    //   name: "Not Acknowledged",
-    //   fieldName: "PendingMembers",
-    //   minWidth: 150,
-    //   maxWidth: 150,
-    //   onRender: (data: any) => {
-    //     return (
-    //       data.PendingMembers.length > 0 && (
-    //         <>
-    //           {
-    //             <div
-    //               style={{
-    //                 display: "flex",
-    //                 alignItems: "center",
-    //                 justifyContent: "flex-start",
-    //                 cursor: "pointer",
-    //               }}
-    //             >
-    //               {data.PendingMembers.map((app, index) => {
-    //                 if (index < 3) {
-    //                   return (
-    //                     <div title={data.PendingMembers[index].text}>
-    //                       <Persona
-    //                         styles={{
-    //                           root: {
-    //                             display: "inline",
-    //                           },
-    //                         }}
-    //                         showOverflowTooltip
-    //                         size={PersonaSize.size24}
-    //                         presence={PersonaPresence.none}
-    //                         showInitialsUntilImageLoads={true}
-    //                         imageUrl={
-    //                           "/_layouts/15/userphoto.aspx?size=S&username=" +
-    //                           `${data.PendingMembers[index].secondaryText}`
-    //                         }
-    //                       />
-    //                     </div>
-    //                   );
-    //                 }
-    //               })}
-
-    //               {data.PendingMembers.length > 3 ? (
-    //                 <div>
-    //                   <TooltipHost
-    //                     content={
-    //                       <ul style={{ margin: 10, padding: 0 }}>
-    //                         {data.PendingMembers.map((DName) => {
-    //                           return (
-    //                             <li style={{ listStyleType: "none" }}>
-    //                               <div style={{ display: "flex" }}>
-    //                                 <Persona
-    //                                   showOverflowTooltip
-    //                                   size={PersonaSize.size24}
-    //                                   presence={PersonaPresence.none}
-    //                                   showInitialsUntilImageLoads={true}
-    //                                   imageUrl={
-    //                                     "/_layouts/15/userphoto.aspx?size=S&username=" +
-    //                                     `${DName.secondaryText}`
-    //                                   }
-    //                                 />
-    //                                 <Label style={{ marginLeft: 10 }}>
-    //                                   {DName.text}
-    //                                 </Label>
-    //                               </div>
-    //                             </li>
-    //                           );
-    //                         })}
-    //                       </ul>
-    //                     }
-    //                     delay={TooltipDelay.zero}
-    //                     directionalHint={DirectionalHint.bottomCenter}
-    //                     styles={{ root: { display: "inline-block" } }}
-    //                   >
-    //                     <div className={styles.extraPeople}>
-    //                       {data.PendingMembers.length}
-    //                     </div>
-    //                   </TooltipHost>
-    //                 </div>
-    //               ) : null}
-    //             </div>
-    //           }
-    //         </>
-    //       )
-    //     );
-    //   },
-    // },
     {
       key: "column7",
       name: "Status for Quiz",
       fieldName: "QuizStatus",
       minWidth: 150,
-      maxWidth: 200,
+      maxWidth: 150,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
@@ -810,6 +646,10 @@ const Dashboard = (props: IProps): JSX.Element => {
       "&:focus::after": {
         borderColor: "rgb(96, 94, 92)",
       },
+    },
+    errorMessage: {
+      color: "rgb(255, 94, 20)",
+      fontWeight: 600,
     },
   };
   const listStyles: Partial<IDetailsListStyles> = {
@@ -1306,7 +1146,8 @@ const Dashboard = (props: IProps): JSX.Element => {
             ApprovedMembers: approvedMembers,
             QuizPendingMembers: _quizPendingMembers,
             QuizApprovedMembers: _quizApprovedMembers,
-            Signatories: _Signatories,
+            // Signatories: _Signatories,
+            Signatories: [...pendingMembers, ...approvedMembers],
             Excluded: _Excluded,
             Link: data.ServerRelativeUrl,
             Quiz: data.ListItemAllFields["Quiz"]
@@ -1323,6 +1164,8 @@ const Dashboard = (props: IProps): JSX.Element => {
             Uploader: _uploader.length > 0 ? _uploader[0] : null,
           });
         });
+
+        console.log(getDataArray);
 
         let filteredData = getDataArray.filter((_value) => !_value.IsDeleted);
         sortData = [...filteredData];
@@ -1803,6 +1646,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     console.log(msg, error);
     alertify.set("notifier", "position", "top-right");
     alertify.error("Something when error, please contact system admin.");
+    setOnSubmitLoader(false);
     resetAllFunction();
   }
 
@@ -1849,6 +1693,8 @@ const Dashboard = (props: IProps): JSX.Element => {
 
     if (!_acknowledgePopup.overAllValidation) {
       updateFunction(_acknowledgePopup);
+    } else {
+      setOnSubmitLoader(false);
     }
     setAcknowledgePopup({ ..._acknowledgePopup });
   };
@@ -1925,7 +1771,8 @@ const Dashboard = (props: IProps): JSX.Element => {
           acknowledgePopup.userName,
           acknowledgePopup.obj.AcknowledgementType,
           acknowledgePopup.comments
-        );
+        ),
+          setOnSubmitLoader(false);
       })
       .catch((error) => {
         errorFunction(error, "updateFunction");
@@ -2252,7 +2099,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   {/* title */}
                   <div
                     className={styles.detailsSection}
-                    style={{ alignItems: "center" }}
+                    // style={{ alignItems: "center" }}
                   >
                     <div>
                       <Label>
@@ -2271,7 +2118,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   {/* file */}
                   <div
                     className={styles.detailsSection}
-                    style={{ alignItems: "center" }}
+                    // style={{ alignItems: "center" }}
                   >
                     <div>
                       <Label>
@@ -2294,7 +2141,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   {/* department */}
                   <div
                     className={styles.detailsSection}
-                    style={{ alignItems: "center" }}
+                    // style={{ alignItems: "center" }}
                   >
                     <div>
                       <Label>
@@ -2306,6 +2153,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                     <Dropdown
                       title={valueObj.Department.join(",")}
                       options={props.deptDropdown}
+                      errorMessage="Select the department for the signatories to acknowledge"
                       // dropdownWidth={"auto"}
                       multiSelect={true}
                       styles={popupDropdownStyles}
@@ -2320,7 +2168,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   <div className={styles.detailsSection}>
                     <div>
                       <Label>
-                        Signatories{" "}
+                        Include{" "}
                         {valueObj.Department.length == 0 ? (
                           <span style={{ color: "red" }}>*</span>
                         ) : null}
@@ -2334,6 +2182,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                         personSelectionLimit={500}
                         groupName={""}
                         showtooltip={true}
+                        tooltipMessage="Select any person to add in the signatories"
                         ensureUser={true}
                         showHiddenInUI={false}
                         principalTypes={[PrincipalType.User]}
@@ -2366,6 +2215,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                         personSelectionLimit={500}
                         groupName={""}
                         showtooltip={true}
+                        tooltipMessage="Mention people to exclude from selected department (if needed)"
                         ensureUser={true}
                         showHiddenInUI={false}
                         principalTypes={[PrincipalType.User]}
@@ -2389,7 +2239,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   {/* Quiz Section */}
                   <div
                     className={styles.detailsSection}
-                    style={{ alignItems: "center" }}
+                    // style={{ alignItems: "center" }}
                   >
                     <div>
                       <Label>Quiz</Label>
@@ -2893,10 +2743,17 @@ const Dashboard = (props: IProps): JSX.Element => {
                     <button
                       className={styles.acknowledgeBtn}
                       onClick={() => {
-                        acknowledgeValidation();
+                        if (!onSubmitLoader) {
+                          setOnSubmitLoader(true);
+                          acknowledgeValidation();
+                        }
                       }}
                     >
-                      Acknowledge
+                      {onSubmitLoader ? (
+                        <Spinner styles={spinnerStyle} />
+                      ) : (
+                        "Acknowledge"
+                      )}
                     </button>
                   ) : null}
                   <button
