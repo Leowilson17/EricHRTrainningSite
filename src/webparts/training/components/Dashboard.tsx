@@ -42,6 +42,10 @@ import { ILabelStyles } from "office-ui-fabric-react";
 
 import alertify from "alertifyjs";
 import "alertifyjs/build/css/alertify.css";
+
+import * as Excel from "exceljs/dist/exceljs.min.js";
+import * as FileSaver from "file-saver";
+
 import {
   PeoplePicker,
   PrincipalType,
@@ -200,7 +204,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   const getDataObj: INewData = {
     condition: false,
     type: "",
-    Id: 0,
+    Id: null,
     Department: [],
     Title: "",
     Mail: [],
@@ -258,25 +262,26 @@ const Dashboard = (props: IProps): JSX.Element => {
   const _columns: IColumn[] = [
     {
       key: "column1",
-      name: "File Name",
-      fieldName: "Title",
-      minWidth: 100,
-      maxWidth: 200,
+      name: "Title",
+      fieldName: "DocTitle",
+      minWidth: 200,
+      maxWidth: 400,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
       onRender: (item) => {
         return (
           <div
-            title={item.Title}
+            title={item.DocTitle}
             style={{
               fontWeight: 600,
               color: "#000",
               fontSize: 13,
               marginTop: 5,
+              cursor: "default",
             }}
           >
-            {item.Title}
+            {item.DocTitle}
           </div>
         );
       },
@@ -293,14 +298,20 @@ const Dashboard = (props: IProps): JSX.Element => {
       onRender: (item) => {
         return (
           <div
-            title={item.Department ? item.Department : "No Department"}
+            title={
+              item.Department.length > 0
+                ? item.Department.join(" , ")
+                : "Any Department"
+            }
             style={{
               color: "#000",
               fontSize: 13,
               marginTop: 5,
             }}
           >
-            {item.Department ? item.Department : "No Department"}
+            {item.Department.length > 0
+              ? item.Department.join(" , ")
+              : "Any Department"}
           </div>
         );
       },
@@ -350,9 +361,9 @@ const Dashboard = (props: IProps): JSX.Element => {
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
-      onRender: (data: any) => (
+      onRender: (item: any) => (
         <div style={{ fontSize: 13, color: "#000", marginTop: 5 }}>
-          {moment(data.created).format("DD/MM/YYYY")}
+          {moment(item.created).format("DD/MM/YYYY")}
         </div>
       ),
     },
@@ -409,7 +420,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                   {data.Signatories.map((app, index) => {
                     if (index < 3) {
                       return (
-                        <div title={data.Signatories[index].text}>
+                        <div title={app.text}>
                           <Persona
                             styles={{
                               root: {
@@ -422,7 +433,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                             showInitialsUntilImageLoads={true}
                             imageUrl={
                               "/_layouts/15/userphoto.aspx?size=S&username=" +
-                              `${data.Signatories[index].secondaryText}`
+                              `${app.secondaryText}`
                             }
                           />
                         </div>
@@ -520,11 +531,35 @@ const Dashboard = (props: IProps): JSX.Element => {
             onClick={(): void => {
               let getDataObj: INewData = {
                 condition: true,
-                type: "edit",
+                type: "view",
                 Id: item.ID,
                 Department: item.Department,
                 Title: item.DocTitle,
                 Mail: item.Signatories,
+                Excluded: item.Excluded,
+                File: {},
+                Quiz: item.Quiz,
+                FileName: item.Title,
+                Valid: "",
+                FileLink: item.Link,
+                Comments: item.Comments,
+                Obj: { ...item },
+              };
+              setValueObj(getDataObj);
+            }}
+          />
+          <Icon
+            title="Edit Details"
+            iconName="Edit"
+            className={iconStyleClass.editIcon}
+            onClick={(): void => {
+              let getDataObj: INewData = {
+                condition: true,
+                type: "edit",
+                Id: item.ID,
+                Department: item.Department,
+                Title: item.DocTitle,
+                Mail: item.PendingMembers,
                 Excluded: item.Excluded,
                 File: {},
                 Quiz: item.Quiz,
@@ -623,7 +658,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     },
   };
   const popupDropdownStyles: Partial<IDropdownStyles> = {
-    root: { margin: "0 13px", width: "82%" },
+    root: { margin: "0 13px", width: "75%" },
     title: {
       backgroundColor: "#f5f8fa !important",
       border: "1px solid #cbd6e2 !important",
@@ -668,52 +703,6 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
     },
   };
-  const statusDesign = mergeStyleSets({
-    Pending: [
-      {
-        backgroundColor: "#f5c3be",
-        color: "red",
-        padding: "5px 10px",
-        fontWeight: 600,
-        borderRadius: "15px",
-        textAlign: "center",
-        margin: "0",
-      },
-    ],
-    InProgress: [
-      {
-        backgroundColor: "#eff1694d",
-        color: "orange",
-        fontWeight: 600,
-        padding: "5px 10px",
-        borderRadius: "15px",
-        textAlign: "center",
-        margin: "0",
-      },
-    ],
-    Completed: [
-      {
-        backgroundColor: "#cbeadc",
-        color: "green",
-        fontWeight: 600,
-        padding: "5px 10px",
-        borderRadius: "15px",
-        textAlign: "center",
-        margin: "0",
-      },
-    ],
-    Others: [
-      {
-        backgroundColor: "#D4E7F6",
-        color: "#0068B8",
-        fontWeight: 600,
-        padding: "5px 10px",
-        borderRadius: "15px",
-        textAlign: "center",
-        margin: "0",
-      },
-    ],
-  });
   const newModalDesign: Partial<IModalStyles> = {
     main: {
       padding: 10,
@@ -754,7 +743,7 @@ const Dashboard = (props: IProps): JSX.Element => {
       borderColor: "#fff #ababab #ababab",
     },
   };
-  const textFieldstyle = {
+  const textFieldstyle: Partial<ITextFieldStyles> = {
     root: {
       width: "90%",
       margin: "0 13px",
@@ -768,7 +757,7 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
     },
   };
-  const multiLinetextFieldstyle = {
+  const multiLinetextFieldstyle: Partial<ITextFieldStyles> = {
     root: {
       width: "90%",
       margin: "0 13px",
@@ -781,10 +770,10 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
     },
   };
-  const peoplePickerStyle = {
+  const peoplePickerStyle: Partial<IBasePickerStyles> = {
     root: {
       background: "#f5f8fa",
-      width: 319,
+      width: "90%",
       margin: "0 10px",
       ".ms-BasePicker-text": {
         minHeigth: 36,
@@ -805,7 +794,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   const peoplePickerDisabledStyle: Partial<IBasePickerStyles> = {
     root: {
       background: "#f5f8fa",
-      width: 319,
+      width: "90%",
       margin: "0 10px",
       ".ms-BasePicker-text": {
         backgroundColor: "#dfe1e0",
@@ -876,6 +865,13 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
       iconStyle,
     ],
+    editIcon: [
+      {
+        color: "#000",
+        cursor: "pointer",
+      },
+      iconStyle,
+    ],
     popupIcon: [
       {
         color: "#36b04b",
@@ -906,6 +902,60 @@ const Dashboard = (props: IProps): JSX.Element => {
         backgroundColor: "none",
       },
     },
+    export: {
+      color: "#038387",
+      fontSize: "18px",
+      height: 20,
+      width: 20,
+      cursor: "pointer",
+      marginRight: 5,
+    },
+  });
+  const statusDesign = mergeStyleSets({
+    Pending: [
+      {
+        backgroundColor: "#f5c3be",
+        color: "red",
+        padding: "5px 10px",
+        fontWeight: 600,
+        borderRadius: "15px",
+        textAlign: "center",
+        margin: "0",
+      },
+    ],
+    InProgress: [
+      {
+        backgroundColor: "#eff1694d",
+        color: "orange",
+        fontWeight: 600,
+        padding: "5px 10px",
+        borderRadius: "15px",
+        textAlign: "center",
+        margin: "0",
+      },
+    ],
+    Completed: [
+      {
+        backgroundColor: "#cbeadc",
+        color: "green",
+        fontWeight: 600,
+        padding: "5px 10px",
+        borderRadius: "15px",
+        textAlign: "center",
+        margin: "0",
+      },
+    ],
+    Others: [
+      {
+        backgroundColor: "#D4E7F6",
+        color: "#0068B8",
+        fontWeight: 600,
+        padding: "5px 10px",
+        borderRadius: "15px",
+        textAlign: "center",
+        margin: "0",
+      },
+    ],
   });
 
   // State variable
@@ -975,127 +1025,106 @@ const Dashboard = (props: IProps): JSX.Element => {
       });
   };
   // get Document from Library
-  function getDatafromLibrary(filterKeys: IFilters) {
+  const getDatafromLibrary = (filterKeys: IFilters): void => {
     // settableLoader(true);
     const getDataArray: IItems[] = [];
-    sp.web
-      .getFolderByServerRelativePath(url)
-      .files.select("*,Author/Title,Author/EMail")
-      .expand("Author,ListItemAllFields")
-      .top(5000)
-      .orderBy("TimeLastModified", false)
+    sp.web.lists
+      .getByTitle(DocName)
+      .items.select("*,Author/Title,Author/EMail")
+      .expand("Author,File")
       .get()
       .then((value: any[]) => {
-        value.forEach((data, index) => {
+        value.forEach((data) => {
           let _uploader = [];
 
           let pendingMembers = [];
           let approvedMembers = [];
+
           let _quizPendingMembers = [];
           let _quizApprovedMembers = [];
 
           let _Signatories = [];
           let _Excluded = [];
 
-          // let _NotAcknowledgedEmails = !data.ListItemAllFields[
-          //   "NotAcknowledgedEmails"
-          // ]
-          //   ? data.ListItemAllFields["QuizNotAcknowledgedEmails"]
-          //   : data.ListItemAllFields["NotAcknowledgedEmails"];
-
-          // let _AcknowledgedEmails = !data.ListItemAllFields[
-          //   "NotAcknowledgedEmails"
-          // ]
-          //   ? data.ListItemAllFields["QuizAcknowledgedEmails"]
-          //   : data.ListItemAllFields["AcknowledgedEmails"];
-
-          _uploader = allPeoples.filter((users) => {
-            return users.secondaryText == data.Author.Email;
+          _uploader = props.azureUsers.filter((users) => {
+            return users.secondaryText == data.Author.EMail;
           });
 
           //pendingMembers
-          data.ListItemAllFields["NotAcknowledgedEmails"] &&
-            data.ListItemAllFields["NotAcknowledgedEmails"]
-              .split(";")
-              .forEach((val) => {
-                let tempArr = [];
-                tempArr = props.azureUsers.filter((users) => {
-                  return val && users.secondaryText == val;
-                });
-                if (
-                  tempArr.length > 0 &&
-                  !pendingMembers.some(
-                    (user) => user.secondaryText == tempArr[0].secondaryText
-                  )
-                ) {
-                  pendingMembers.push(tempArr[0]);
-                }
-              });
+          data.NotAcknowledgedEmails &&
+            data.NotAcknowledgedEmails.split(";").forEach((val) => {
+              let tempArr = [];
+              tempArr = props.azureUsers.filter(
+                (users) => val && users.secondaryText == val
+              );
+              if (
+                tempArr.length > 0 &&
+                !pendingMembers.some(
+                  (user) => user.secondaryText == tempArr[0].secondaryText
+                )
+              ) {
+                pendingMembers.push(tempArr[0]);
+              }
+            });
 
           //approvedMembers
-          data.ListItemAllFields["AcknowledgedEmails"] &&
-            data.ListItemAllFields["AcknowledgedEmails"]
-              .split(";")
-              .forEach((val) => {
-                let tempArr = [];
-                tempArr = props.azureUsers.filter((users) => {
-                  return val && users.secondaryText == val;
-                });
-                if (
-                  tempArr.length > 0 &&
-                  !approvedMembers.some(
-                    (user) => user.secondaryText == tempArr[0].secondaryText
-                  )
-                ) {
-                  approvedMembers.push(tempArr[0]);
-                }
-              });
+          data.AcknowledgedEmails &&
+            data.AcknowledgedEmails.split(";").forEach((val) => {
+              let tempArr = [];
+              tempArr = props.azureUsers.filter(
+                (users) => val && users.secondaryText == val
+              );
+              if (
+                tempArr.length > 0 &&
+                !approvedMembers.some(
+                  (user) => user.secondaryText == tempArr[0].secondaryText
+                )
+              ) {
+                approvedMembers.push(tempArr[0]);
+              }
+            });
 
           //_quizPendingMembers
-          data.ListItemAllFields["QuizNotAcknowledgedEmails"] &&
-            data.ListItemAllFields["QuizNotAcknowledgedEmails"]
-              .split(";")
-              .forEach((val) => {
-                let tempArr = [];
-                tempArr = props.azureUsers.filter((users) => {
-                  return val && users.secondaryText == val;
-                });
-                if (
-                  tempArr.length > 0 &&
-                  !_quizPendingMembers.some(
-                    (user) => user.secondaryText == tempArr[0].secondaryText
-                  )
-                ) {
-                  _quizPendingMembers.push(tempArr[0]);
-                }
-              });
+          data.QuizNotAcknowledgedEmails &&
+            data.QuizNotAcknowledgedEmails.split(";").forEach((val) => {
+              let tempArr = [];
+              tempArr = props.azureUsers.filter(
+                (users) => val && users.secondaryText == val
+              );
+              if (
+                tempArr.length > 0 &&
+                !_quizPendingMembers.some(
+                  (user) => user.secondaryText == tempArr[0].secondaryText
+                )
+              ) {
+                _quizPendingMembers.push(tempArr[0]);
+              }
+            });
 
           //_quizApprovedMembers
-          data.ListItemAllFields["QuizAcknowledgedEmails"] &&
-            data.ListItemAllFields["QuizAcknowledgedEmails"]
-              .split(";")
-              .forEach((val) => {
-                let tempArr = [];
-                tempArr = props.azureUsers.filter((users) => {
-                  return val && users.secondaryText == val;
-                });
-                if (
-                  tempArr.length > 0 &&
-                  !_quizApprovedMembers.some(
-                    (user) => user.secondaryText == tempArr[0].secondaryText
-                  )
-                ) {
-                  _quizApprovedMembers.push(tempArr[0]);
-                }
-              });
+          data.QuizAcknowledgedEmails &&
+            data.QuizAcknowledgedEmails.split(";").forEach((val) => {
+              let tempArr = [];
+              tempArr = props.azureUsers.filter(
+                (users) => val && users.secondaryText == val
+              );
+              if (
+                tempArr.length > 0 &&
+                !_quizApprovedMembers.some(
+                  (user) => user.secondaryText == tempArr[0].secondaryText
+                )
+              ) {
+                _quizApprovedMembers.push(tempArr[0]);
+              }
+            });
 
           //_Signatories
-          data.ListItemAllFields["SignatoriesId"] &&
-            data.ListItemAllFields["SignatoriesId"].forEach((val) => {
+          data.Signatories &&
+            data.Signatories.split(";").forEach((val) => {
               let tempArr = [];
-              tempArr = allPeoples.filter((arr) => {
-                return arr.ID == val;
-              });
+              tempArr = props.azureUsers.filter(
+                (arr) => arr.secondaryText == val
+              );
               if (
                 tempArr.length > 0 &&
                 !_Signatories.some(
@@ -1107,12 +1136,12 @@ const Dashboard = (props: IProps): JSX.Element => {
             });
 
           //_Excluded
-          data.ListItemAllFields["ExcludedId"] &&
-            data.ListItemAllFields["ExcludedId"].forEach((val) => {
+          data.Excluded &&
+            data.Excluded.split(";").forEach((val) => {
               let tempArr = [];
-              tempArr = allPeoples.filter((arr) => {
-                return arr.ID == val;
-              });
+              tempArr = props.azureUsers.filter(
+                (arr) => arr.secondaryText == val
+              );
               if (
                 tempArr.length > 0 &&
                 !_Excluded.some(
@@ -1134,38 +1163,29 @@ const Dashboard = (props: IProps): JSX.Element => {
             : "Completed";
 
           getDataArray.push({
-            ID: data.ListItemAllFields["Id"],
+            ID: data.ID,
             AcknowledgementType: acknowledgementType,
-            Department: data.ListItemAllFields["Department"]
-              ? data.ListItemAllFields["Department"].split(";").join(" , ")
-              : "Any Department",
-            Title: data.Name,
-            Status: data.ListItemAllFields["Status"],
-            QuizStatus: data.ListItemAllFields["QuizStatus"],
+            Department: data.Department ? data.Department.split(";") : [],
+            Title: data.File.Name,
+            Status: data.Status,
+            QuizStatus: data.QuizStatus,
             PendingMembers: pendingMembers,
             ApprovedMembers: approvedMembers,
             QuizPendingMembers: _quizPendingMembers,
             QuizApprovedMembers: _quizApprovedMembers,
-            // Signatories: _Signatories,
             Signatories: [...pendingMembers, ...approvedMembers],
             Excluded: _Excluded,
-            Link: data.ServerRelativeUrl,
-            Quiz: data.ListItemAllFields["Quiz"]
-              ? data.ListItemAllFields["Quiz"]
-              : "",
-            created: data.TimeCreated,
-            DocVersion: data.ListItemAllFields["DocVersion"]
-              ? data.ListItemAllFields["DocVersion"]
-              : null,
-            DocTitle: data.ListItemAllFields["DocTitle"],
-            Comments: data.ListItemAllFields["Comments"],
-            FileName: data.ListItemAllFields["FileName"],
-            IsDeleted: data.ListItemAllFields["IsDelete"] ? true : false,
+            Link: data.File.ServerRelativeUrl,
+            Quiz: data.Quiz ? data.Quiz : "",
+            created: data.File.TimeCreated,
+            DocVersion: data.DocVersion ? data.DocVersion : null,
+            DocTitle: data.DocTitle,
+            Comments: data.Comments,
+            FileName: data.FileName,
+            IsDeleted: data.IsDelete ? true : false,
             Uploader: _uploader.length > 0 ? _uploader[0] : null,
           });
         });
-
-        console.log(getDataArray);
 
         let filteredData = getDataArray.filter((_value) => !_value.IsDeleted);
         sortData = [...filteredData];
@@ -1200,17 +1220,16 @@ const Dashboard = (props: IProps): JSX.Element => {
       .catch((error) => {
         errorFunction("getDatafromLibrary", error);
       });
-  }
+  };
 
-  //  search filter
-  function filterFunction(key: string, val: any): void {
+  const filterFunction = (key: string, val: any): void => {
     let tempArr: IItems[] = masterData;
     let tempFilter: IFilters = FilterKeys;
     tempFilter[key] = val;
 
     if (tempFilter.Title) {
       tempArr = tempArr.filter((arr) =>
-        arr.Title.toLowerCase().includes(tempFilter.Title.toLowerCase())
+        arr.DocTitle.toLowerCase().includes(tempFilter.Title.toLowerCase())
       );
     }
     if (tempFilter.Department != "All") {
@@ -1275,10 +1294,9 @@ const Dashboard = (props: IProps): JSX.Element => {
     setdisplayData([...tempArr]);
     setFilterKeys({ ...tempFilter });
     paginateFunction(1, tempArr);
-  }
+  };
 
-  // modal Onchangehandler
-  function Onchangehandler(key: string, val: any) {
+  const Onchangehandler = (key: string, val: any): void => {
     let getDatatempArray: INewData = { ...valueObj };
     if (key == "Department") {
       getDatatempArray.Department = val.selected
@@ -1290,36 +1308,67 @@ const Dashboard = (props: IProps): JSX.Element => {
     }
     getDatatempArray.Valid = "";
     setValueObj({ ...getDatatempArray });
-  }
+  };
 
-  // form validation
-  function validation() {
-    let checkObj = valueObj;
+  const validation = (): void => {
+    let _valueObj = valueObj;
     let isError = false;
-    // if (!checkObj.Department) {
-    //   isError = true;
-    //   checkObj.Valid = "* Please Select Department";
-    // } else
-    if (!checkObj.Title.trim()) {
-      isError = true;
-      checkObj.Valid = "* Please Enter Title";
-    } else if (!checkObj.File) {
-      isError = true;
-      checkObj.Valid = "* Please Choose File";
-    } else if (checkObj.Department.length == 0 && checkObj.Mail.length == 0) {
-      isError = true;
-      checkObj.Valid = "* Please Select Signatories";
+
+    if (_valueObj.type == "new") {
+      if (!_valueObj.Title.trim()) {
+        isError = true;
+        _valueObj.Valid = "* Please Enter Title";
+      } else if (!_valueObj.File) {
+        isError = true;
+        _valueObj.Valid = "* Please Choose File";
+      } else if (
+        _valueObj.Department.length == 0 &&
+        _valueObj.Mail.length == 0
+      ) {
+        isError = true;
+        _valueObj.Valid = "* Please Select Signatories";
+      }
     }
-    setValueObj({ ...checkObj });
+    // else {
+    //   if (
+    //     _valueObj.Mail.some(
+    //       (user) =>
+    //         _valueObj.Obj.ApprovedMembers.some(
+    //           (_user) => _user.secondaryText == user.secondaryText
+    //         ) ||
+    //         _valueObj.Obj.Excluded.some(
+    //           (_user) => _user.secondaryText == user.secondaryText
+    //         )
+    //     )
+    //   ) {
+    //     isError = true;
+    //     _valueObj.Valid = "* Please Select Valid Signatories";
+    //   } else if (
+    //     _valueObj.Excluded.some(
+    //       (user) =>
+    //         _valueObj.Obj.ApprovedMembers.some(
+    //           (_user) => _user.secondaryText == user.secondaryText
+    //         ) ||
+    //         _valueObj.Obj.Excluded.some(
+    //           (_user) => _user.secondaryText == user.secondaryText
+    //         )
+    //     )
+    //   ) {
+    //     isError = true;
+    //     _valueObj.Valid = "* Please Select Valid Excluded user";
+    //   }
+    // }
+
     if (isError == false) {
-      addFile(checkObj);
+      _valueObj.type == "new" ? addFile(_valueObj) : updateFile(_valueObj);
     } else {
       setOnSubmitLoader(false);
     }
-  }
 
-  // add file
-  function addFile(_valueObj) {
+    setValueObj({ ..._valueObj });
+  };
+
+  const addFile = (_valueObj: INewData): void => {
     let updateData = _valueObj;
     let _docVersion: number = 1;
     let fileNameFilter: IItems[] = nofillterData.filter(
@@ -1358,49 +1407,17 @@ const Dashboard = (props: IProps): JSX.Element => {
       }
     }
 
-    // let approvers: number[] = updateData.Mail.map((people) => people.ID);
-    let approvers: number[] = updateData.Mail.map((people) => people.id);
-
-    let excludedUsers: number[] = updateData.Excluded.map(
-      (people) => people.id
+    let approvers: string[] = updateData.Mail.map(
+      (people) => people.secondaryText
     );
 
-    let formatedApprovers = [];
-    let formatedExclude = [];
+    let excludedUsers: string[] = updateData.Excluded.map(
+      (people) => people.secondaryText
+    );
 
-    for (let appr of updateData.Mail) {
-      formatedApprovers.push({
-        key: 1,
-        imageUrl:
-          `/_layouts/15/userphoto.aspx?size=S&accountname=` +
-          `${appr.secondaryText}`,
-        text: appr.text,
-        ID: appr.id,
-        isGroup: false,
-        isValid: true,
+    let validUsers: IPeople[] = [];
 
-        secondaryText: appr.secondaryText,
-        department: "",
-      });
-    }
-    for (let exclude of updateData.Excluded) {
-      formatedExclude.push({
-        key: 1,
-        imageUrl:
-          `/_layouts/15/userphoto.aspx?size=S&accountname=` +
-          `${exclude.secondaryText}`,
-        isGroup: false,
-        isValid: true,
-        ID: exclude.id,
-        secondaryText: exclude.secondaryText,
-        department: "",
-        text: exclude.text,
-      });
-    }
-
-    let validUsers = [];
-
-    for (let vUsers of [...filterdDeptUsers, ...formatedApprovers]) {
+    for (let vUsers of [...filterdDeptUsers, ...updateData.Mail]) {
       if (
         !validUsers.some((user) => user.secondaryText == vUsers.secondaryText)
       ) {
@@ -1409,17 +1426,16 @@ const Dashboard = (props: IProps): JSX.Element => {
     }
 
     let pendingApprovers: any = (
-      formatedExclude.length > 0
+      updateData.Excluded.length > 0
         ? validUsers.filter(
             (people) =>
-              !formatedExclude.some(
+              !updateData.Excluded.some(
                 (exc) => exc.secondaryText == people.secondaryText
               )
           )
         : validUsers
     ).map((pending) => pending.secondaryText);
 
-    // if (filteredSignatories.length > 0 && pendingApprovers) {
     if (pendingApprovers.length > 0) {
       let responseData = {
         DocTitle: updateData.Title.trim(),
@@ -1428,12 +1444,8 @@ const Dashboard = (props: IProps): JSX.Element => {
         Department: updateData.Department.join(";").trim(),
         FileName: updateData.File["name"],
         Quiz: updateData.Quiz,
-        SignatoriesId: {
-          results: approvers,
-        },
-        ExcludedId: {
-          results: excludedUsers,
-        },
+        Signatories: approvers.length > 0 ? approvers.join(";") : "",
+        Excluded: excludedUsers.length > 0 ? excludedUsers.join(";") : "",
         NotAcknowledgedEmails: pendingApprovers.join(";").trim(),
         QuizNotAcknowledgedEmails: updateData.Quiz
           ? pendingApprovers.join(";").trim()
@@ -1472,64 +1484,103 @@ const Dashboard = (props: IProps): JSX.Element => {
       setValueObj({ ..._valueObj });
       setOnSubmitLoader(false);
     }
-  }
-
-  const emailReturnFunction = (
-    userArr: any[],
-    excludedUsers: any[]
-  ): string => {
-    let _pendingApprovers: string[] = [];
-
-    if (userArr.length > 0) {
-      for (let i = 0; i < userArr.length; i++) {
-        if (userArr[i].isGroup == false) {
-          _pendingApprovers.push(userArr[i].secondaryText);
-        } else {
-          let targetAzureGroup = props.azureGroups.filter(
-            (ad) => ad.groupName == userArr[i].text
-          );
-          if (targetAzureGroup.length > 0 && targetAzureGroup[0].groupID) {
-            targetAzureGroup[0].groupMembers.forEach((user) => {
-              if (user.userPrincipalName) {
-                _pendingApprovers.push(user.userPrincipalName);
-              }
-            });
-          }
-        }
-
-        if (i == userArr.length - 1) {
-          _pendingApprovers = _pendingApprovers.filter(
-            (item, index) => _pendingApprovers.indexOf(item) === index
-          );
-          _pendingApprovers = _pendingApprovers.filter(
-            (mail: string) =>
-              !excludedUsers.some((exclude) => exclude.secondaryText == mail)
-          );
-          // _pendingApprovers = _pendingApprovers.filter(
-          //   (user) => user != loggedUserEmail
-          // );
-          return _pendingApprovers.join(";");
-        }
-      }
-    } else {
-      return "";
-    }
   };
 
-  // delete function
-  function deleteFunction(val) {
+  const updateFile = (_valueObj: INewData): void => {
+    let ExcludedUsers: string[] = _valueObj.Excluded.map(
+      (user) => user.secondaryText
+    );
+
+    let AcknowledgedFile: string[] = _valueObj.Obj.ApprovedMembers.map(
+      (user) => user.secondaryText
+    );
+    let AcknowledgedQuiz: string[] = _valueObj.Obj.QuizApprovedMembers.map(
+      (user) => user.secondaryText
+    );
+
+    let includeUsers: string[] = [
+      ...AcknowledgedFile,
+      ...AcknowledgedQuiz,
+      ..._valueObj.Mail.map((user) => user.secondaryText),
+    ];
+
+    let uniqueIncludeUsers = [];
+
+    for (const email of includeUsers) {
+      if (!uniqueIncludeUsers.some((d) => d == email))
+        uniqueIncludeUsers.push(email);
+    }
+
+    uniqueIncludeUsers = uniqueIncludeUsers.filter(
+      (user) => !ExcludedUsers.some((_user) => user == _user)
+    );
+
+    let NotAcknowledgedFile = uniqueIncludeUsers.filter(
+      (user) => !AcknowledgedFile.some((_user) => _user == user)
+    );
+
+    let NotAcknowledgedQuiz = uniqueIncludeUsers.filter(
+      (user) => !AcknowledgedQuiz.some((_user) => _user == user)
+    );
+
+    let FileStatus: string = valueObj.Obj.Status;
+    let QuizStatus: string = valueObj.Obj.Quiz
+      ? valueObj.Obj.QuizStatus
+      : "No Quiz";
+
+    if (AcknowledgedFile.length > 0 && NotAcknowledgedFile.length > 0) {
+      FileStatus = "In Progress";
+    } else if (AcknowledgedFile.length > 0 && NotAcknowledgedFile.length == 0) {
+      FileStatus = "Completed";
+    } else if (AcknowledgedFile.length == 0 && NotAcknowledgedFile.length > 0) {
+      FileStatus = "Pending";
+    }
+
+    if (AcknowledgedQuiz.length > 0 && NotAcknowledgedQuiz.length > 0) {
+      QuizStatus = "In Progress";
+    } else if (AcknowledgedQuiz.length > 0 && NotAcknowledgedQuiz.length == 0) {
+      QuizStatus = "Completed";
+    } else if (AcknowledgedQuiz.length == 0 && NotAcknowledgedQuiz.length > 0) {
+      QuizStatus = "Pending";
+    }
+
+    let responseData = {
+      Excluded: ExcludedUsers.join(";").trim(),
+      NotAcknowledgedEmails: NotAcknowledgedFile.join(";").trim(),
+      QuizNotAcknowledgedEmails: valueObj.Obj.Quiz
+        ? NotAcknowledgedQuiz.join(";").trim()
+        : "",
+      Comments: valueObj.Comments,
+      Status: FileStatus,
+      QuizStatus: QuizStatus,
+    };
+
     sp.web.lists
       .getByTitle(DocName)
-      .items.getById(val)
+      .items.getById(valueObj.Id)
+      .update(responseData)
+      .then(() => {
+        setValueObj(getDataObj);
+        setOnSubmitLoader(false);
+        init();
+      })
+      .catch((error) => {
+        errorFunction("updateFile", error);
+      });
+  };
+
+  const deleteFunction = (targetID: number): void => {
+    sp.web.lists
+      .getByTitle(DocName)
+      .items.getById(targetID)
       .update({ IsDelete: true })
       .then(() => {
         setHideDelModal({ condition: false, targetID: null });
         setOnSubmitLoader(false);
         init();
       });
-  }
+  };
 
-  // sorting data
   const _onColumnClick = (
     ev: React.MouseEvent<HTMLElement>,
     column: IColumn
@@ -1572,36 +1623,35 @@ const Dashboard = (props: IProps): JSX.Element => {
       );
   }
 
-  //  peoplepicker variable
-  const GetUserDetails = (filterText: any, currentPersonas) => {
-    let _allPeoples = allPeoples;
+  const GetUserDetailsAzureUsers = (
+    filterText: string,
+    currentPersonas: IPeople[]
+  ): IPeople[] => {
+    let _allPeoples = props.azureUsers;
+
+    if (valueObj.Obj != null) {
+      _allPeoples = _allPeoples.filter(
+        (_people) =>
+          !valueObj.Obj.ApprovedMembers.some(
+            (user) => user.secondaryText == _people.secondaryText
+          ) &&
+          !valueObj.Excluded.some(
+            (user) => user.secondaryText == _people.secondaryText
+          )
+      );
+    }
 
     if (currentPersonas.length > 0) {
       _allPeoples = _allPeoples.filter(
         (_people) =>
-          !currentPersonas.some((persona) => persona.ID == _people.ID)
+          !currentPersonas.some(
+            (persona) => persona.secondaryText == _people.secondaryText
+          )
       );
     }
     var result = _allPeoples.filter(
-      (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
-    );
-
-    return result.filter((item) =>
-      doesTextStartWith(item.text as string, filterText)
-    );
-  };
-
-  const GetUserDetailsUserOnly = (filterText: any, currentPersonas) => {
-    let _allPeoples = allPeoples.filter((user) => !user.isGroup);
-
-    if (currentPersonas.length > 0) {
-      _allPeoples = _allPeoples.filter(
-        (_people) =>
-          !currentPersonas.some((persona) => persona.ID == _people.ID)
-      );
-    }
-    var result = _allPeoples.filter(
-      (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
+      (value, index, self) =>
+        index === self.findIndex((t) => t.secondaryText === value.secondaryText)
     );
 
     return result.filter((item) =>
@@ -1613,22 +1663,11 @@ const Dashboard = (props: IProps): JSX.Element => {
     return text.toLowerCase().indexOf(filterText.toLowerCase()) === 0;
   };
 
-  const dateformater = (date: Date) => {
+  const dateformater = (date: Date): string => {
     return date ? moment(date).format("DD/MM/YYYY") : "";
   };
 
-  // reset function
-  function reset() {
-    let _filterKeys = filterKeys;
-    _filterKeys.View = isManager ? "All Documents" : "Pending Acknowledgement";
-    setdisplayData(masterData);
-    setFilterKeys(filterKeys);
-    setColumns(_columns);
-    paginateFunction(1, masterData);
-  }
-
-  // Pagination function
-  const paginateFunction = (pagenumber: number, data: any[]) => {
+  const paginateFunction = (pagenumber: number, data: any[]): void => {
     if (data.length > 0) {
       let lastIndex: number = pagenumber * totalPageItems;
       let firstIndex: number = lastIndex - totalPageItems;
@@ -1642,13 +1681,22 @@ const Dashboard = (props: IProps): JSX.Element => {
   };
 
   // error handling
-  function errorFunction(msg: string, error: any): void {
+  const errorFunction = (msg: string, error: any): void => {
     console.log(msg, error);
     alertify.set("notifier", "position", "top-right");
     alertify.error("Something when error, please contact system admin.");
     setOnSubmitLoader(false);
     resetAllFunction();
-  }
+  };
+
+  const reset = (): void => {
+    let _filterKeys = filterKeys;
+    _filterKeys.View = isManager ? "All Documents" : "Pending Acknowledgement";
+    setdisplayData(masterData);
+    setFilterKeys(_filterKeys);
+    setColumns(_columns);
+    paginateFunction(1, masterData);
+  };
 
   const resetAllFunction = (): void => {
     setAcknowledgePopup({
@@ -1891,9 +1939,74 @@ const Dashboard = (props: IProps): JSX.Element => {
     );
   };
 
+  const generateExcel = (): void => {
+    let _data: IItems[] = [...paginatedData];
+    const workbook = new Excel.Workbook();
+    const worksheet = workbook.addWorksheet("My Sheet");
+    worksheet.columns = [
+      { header: "Title", key: "DocTitle", width: 30 }, // A
+      { header: "Department", key: "Department", width: 30 }, // B
+      { header: "Uploaded By", key: "Uploader", width: 30 }, // C
+      { header: "Submitted On", key: "created", width: 30 }, // D
+      { header: "Status for Document", key: "Status", width: 30 }, // E
+      { header: "Signatories", key: "Approvers", width: 30 }, // F
+      { header: "Status for Quiz", key: "QuizStatus", width: 30 }, // G
+    ];
+    _data.forEach((item: IItems) => {
+      let signatoriesEmails: string =
+        item.Signatories.length > 0
+          ? item.Signatories.map((user) => user.text).join(";")
+          : "";
+
+      worksheet.addRow({
+        DocTitle: item.DocTitle ? item.DocTitle : "",
+        Department:
+          item.Department.length > 0
+            ? item.Department.join(" , ")
+            : "Any Department",
+        Uploader: item.Uploader ? item.Uploader.text : "",
+        created: item.created ? moment(item.created).format("DD/MM/YYYY") : "",
+        Status: item.Status ? item.Status : "",
+        Approvers: signatoriesEmails,
+        QuizStatus: item.QuizStatus ? item.QuizStatus : "",
+      });
+    });
+    ["A1", "B1", "C1", "D1", "E1", "F1", "G1"].map((key) => {
+      worksheet.getCell(key).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "ff5e14" },
+      };
+    });
+    ["A1", "B1", "C1", "D1", "E1", "F1", "G1"].map((key) => {
+      worksheet.getCell(key).color = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "ffffff" },
+      };
+    });
+    workbook.xlsx
+      .writeBuffer()
+      .then((buffer) =>
+        FileSaver.saveAs(
+          new Blob([buffer]),
+          `test-${new Date().toLocaleString()}.xlsx`
+        )
+      )
+      .catch((err) => console.log("Error writing excel export", err));
+  };
+
   const init = (): void => {
     settableLoader(true);
-    getManagers();
+
+    if (DocName || CommentsListName) {
+      getManagers();
+    } else {
+      errorFunction(
+        "Invalid Document Library or List",
+        "InvalidPropertyPaneValue"
+      );
+    }
   };
 
   // useEffect
@@ -1903,21 +2016,6 @@ const Dashboard = (props: IProps): JSX.Element => {
 
   return (
     <ThemeProvider theme={myTheme}>
-      {/* <div className={styles.clsPeoplepicker}>
-        <PeoplePicker
-          context={props.spcontext}
-          personSelectionLimit={500}
-          groupName={""} // Leave this blank in case you want to filter from all users
-          showtooltip={true}
-          ensureUser={true}
-          showHiddenInUI={false}
-          principalTypes={[PrincipalType.User]}
-          selectedItems={(user) => {
-            console.log(user);
-          }}
-          resolveDelay={10}
-        />
-      </div> */}
       {tableLoader ? (
         <div style={{ display: "flex", justifyContent: "center" }}>
           <Spinner />
@@ -1927,7 +2025,6 @@ const Dashboard = (props: IProps): JSX.Element => {
           <div className={styles.container}>
             <div>
               {/* header section starts */}
-              {/* <Label className={styles.header}>HR Documents</Label> */}
               <Label className={styles.header}>SOPs & Trainings</Label>
               {/* header section ends */}
 
@@ -1935,9 +2032,9 @@ const Dashboard = (props: IProps): JSX.Element => {
               <div className={styles.filterSection}>
                 <div className={styles.searchFlex}>
                   <div>
-                    <Label>File Name</Label>
+                    <Label>Title</Label>
                     <SearchBox
-                      placeholder="Search File Name"
+                      placeholder="Search Title"
                       styles={searchStyle}
                       value={FilterKeys.Title}
                       onChange={(e, text) => {
@@ -2028,23 +2125,54 @@ const Dashboard = (props: IProps): JSX.Element => {
                   </div>
                 </div>
                 {/* filter section ends */}
-                {isLoggedUserManager ? (
+                <div style={{ display: "flex", marginTop: 28 }}>
                   <div>
-                    <PrimaryButton
-                      text="New"
-                      className={styles.newBtn}
+                    <Label
                       onClick={() => {
-                        let _getDataObj: INewData = getDataObj;
-                        _getDataObj.condition = true;
-                        _getDataObj.Id = 0;
-                        _getDataObj.type = "new";
-                        // _getDataObj.Department = "No Department";
-                        _getDataObj.Department = [];
-                        setValueObj({ ..._getDataObj });
+                        generateExcel();
                       }}
-                    />
+                      style={{
+                        width: "max-content",
+                        backgroundColor: "#EBEBEB",
+                        padding: "7px 15px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "3px",
+                        color: "#1D6F42",
+                        marginRight: 10,
+                        // marginTop: 15,
+                      }}
+                    >
+                      <Icon
+                        style={{
+                          color: "#1D6F42",
+                        }}
+                        iconName="ExcelDocument"
+                        className={iconStyleClass.export}
+                      />
+                      Export as XLS
+                    </Label>
                   </div>
-                ) : null}
+                  {isLoggedUserManager ? (
+                    <div>
+                      <PrimaryButton
+                        text="New"
+                        className={styles.newBtn}
+                        onClick={() => {
+                          let _getDataObj: INewData = getDataObj;
+                          _getDataObj.condition = true;
+                          _getDataObj.Id = null;
+                          _getDataObj.type = "new";
+                          _getDataObj.Department = [];
+                          setValueObj({ ..._getDataObj });
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </div>
               {/* filter section ends */}
 
@@ -2087,84 +2215,147 @@ const Dashboard = (props: IProps): JSX.Element => {
           </div>
 
           {/*  New Popup */}
-          {valueObj.condition && valueObj.type == "new" ? (
+          {(valueObj.condition && valueObj.type == "new") ||
+          valueObj.type == "edit" ? (
             <Modal styles={newModalDesign} isOpen={valueObj.condition}>
               <div className={styles.modalCustomDesign}>
                 <div className={styles.header}>
-                  <h2>New Document</h2>
+                  <Label>
+                    {valueObj.type == "new" ? "New Document" : "Edit Document"}
+                  </Label>
                 </div>
 
                 {/* details section */}
                 <div>
                   {/* title */}
-                  <div
-                    className={styles.detailsSection}
-                    // style={{ alignItems: "center" }}
-                  >
+                  <div className={styles.detailsSection}>
                     <div>
                       <Label>
-                        Title <span style={{ color: "red" }}>*</span>
+                        Title{" "}
+                        {valueObj.type == "new" && (
+                          <span style={{ color: "red" }}>*</span>
+                        )}
                       </Label>
                     </div>
                     <div style={{ width: 0 }}>:</div>
-                    <TextField
-                      styles={textFieldstyle}
-                      value={valueObj.Title}
-                      onChange={(name) => {
-                        Onchangehandler("Title", name.target["value"]);
-                      }}
-                    />
+                    {valueObj.type == "edit" ? (
+                      <Label style={{ width: "auto", marginLeft: 13 }}>
+                        {valueObj.Title}
+                      </Label>
+                    ) : (
+                      <TextField
+                        styles={textFieldstyle}
+                        value={valueObj.Title}
+                        onChange={(name) => {
+                          Onchangehandler("Title", name.target["value"]);
+                        }}
+                      />
+                    )}
                   </div>
                   {/* file */}
-                  <div
-                    className={styles.detailsSection}
-                    // style={{ alignItems: "center" }}
-                  >
+
+                  <div className={styles.detailsSection}>
                     <div>
                       <Label>
-                        File <span style={{ color: "red" }}>*</span>
+                        File{" "}
+                        {valueObj.type == "new" && (
+                          <span style={{ color: "red" }}>*</span>
+                        )}
                       </Label>
                     </div>
                     <div>:</div>
+                    {valueObj.type == "edit" ? (
+                      <Label style={{ width: "auto", marginLeft: 13 }}>
+                        <a
+                          href={valueObj.FileLink}
+                          target="_blank"
+                          data-interception="off"
+                        >
+                          {valueObj.FileName}
+                        </a>
+                      </Label>
+                    ) : (
+                      <div>
+                        <input
+                          style={{ margin: "0 10px" }}
+                          className={styles.fileStyle}
+                          type="file"
+                          id="uploadFile"
+                          onChange={(file) => {
+                            Onchangehandler("File", file.target["files"][0]);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {/* department */}
+                  <div className={styles.detailsSection}>
                     <div>
-                      <input
-                        style={{ margin: "0 10px" }}
-                        className={styles.fileStyle}
-                        type="file"
-                        id="uploadFile"
-                        onChange={(file) => {
-                          Onchangehandler("File", file.target["files"][0]);
+                      <Label>Department</Label>
+                    </div>
+                    <div style={{ width: 0 }}>:</div>
+                    {valueObj.type == "edit" ? (
+                      <Label
+                        style={{
+                          width: "auto",
+                          marginLeft: 13,
+                          fontWeight: 400,
+                        }}
+                      >
+                        {valueObj.Department.length > 0
+                          ? valueObj.Department.join(" , ")
+                          : "Any Department"}
+                      </Label>
+                    ) : (
+                      <Dropdown
+                        title={valueObj.Department.join(",")}
+                        options={props.deptDropdown}
+                        errorMessage="Select the Department for the signatories to acknowledge"
+                        multiSelect={true}
+                        styles={popupDropdownStyles}
+                        selectedKeys={valueObj.Department}
+                        onChange={(e, option) => {
+                          valueObj.type == "new" &&
+                            Onchangehandler("Department", option);
+                        }}
+                      />
+                    )}
+                  </div>
+                  {/* people picker */}
+                  {valueObj.type == "edit" && (
+                    <div className={styles.detailsSection}>
+                      <div>
+                        <Label>Acknowledged</Label>
+                      </div>
+                      <div>:</div>
+                      <NormalPeoplePicker
+                        styles={peoplePickerDisabledStyle}
+                        onResolveSuggestions={GetUserDetailsAzureUsers}
+                        itemLimit={10000}
+                        disabled={true}
+                        selectedItems={valueObj.Obj.ApprovedMembers}
+                      />
+                    </div>
+                  )}
+                  {valueObj.type == "edit" && (
+                    <div className={styles.detailsSection}>
+                      <div>
+                        <Label>Excluded</Label>
+                      </div>
+                      <div>:</div>
+                      <NormalPeoplePicker
+                        // styles={peoplePickerDisabledStyle}
+                        styles={peoplePickerStyle}
+                        onResolveSuggestions={GetUserDetailsAzureUsers}
+                        itemLimit={10000}
+                        // disabled={true}
+                        selectedItems={valueObj.Excluded}
+                        onChange={(selectedUser) => {
+                          Onchangehandler("Excluded", selectedUser);
                         }}
                       />
                     </div>
-                  </div>
-                  {/* department */}
-                  <div
-                    className={styles.detailsSection}
-                    // style={{ alignItems: "center" }}
-                  >
-                    <div>
-                      <Label>
-                        Department
-                        {/* <span style={{ color: "red" }}>*</span> */}
-                      </Label>
-                    </div>
-                    <div style={{ width: 0 }}>:</div>
-                    <Dropdown
-                      title={valueObj.Department.join(",")}
-                      options={props.deptDropdown}
-                      errorMessage="Select the department for the signatories to acknowledge"
-                      // dropdownWidth={"auto"}
-                      multiSelect={true}
-                      styles={popupDropdownStyles}
-                      selectedKeys={valueObj.Department}
-                      onChange={(e, option) => {
-                        console.log(option);
-                        Onchangehandler("Department", option);
-                      }}
-                    />
-                  </div>
-                  {/* people picker */}
+                  )}
                   <div className={styles.detailsSection}>
                     <div>
                       <Label>
@@ -2176,65 +2367,36 @@ const Dashboard = (props: IProps): JSX.Element => {
                     </div>
 
                     <div>:</div>
-                    <div className={styles.clsPeoplepicker}>
-                      <PeoplePicker
-                        context={props.spcontext}
-                        personSelectionLimit={500}
-                        groupName={""}
-                        showtooltip={true}
-                        tooltipMessage="Select any person to add in the signatories"
-                        ensureUser={true}
-                        showHiddenInUI={false}
-                        principalTypes={[PrincipalType.User]}
-                        selectedItems={(user) => {
-                          Onchangehandler("Mail", user);
-                        }}
-                        resolveDelay={10}
-                      />
-                    </div>
-                    {/* <NormalPeoplePicker
+
+                    <NormalPeoplePicker
                       styles={peoplePickerStyle}
-                      onResolveSuggestions={GetUserDetails}
-                      itemLimit={10}
+                      onResolveSuggestions={GetUserDetailsAzureUsers}
+                      itemLimit={1000}
                       selectedItems={valueObj.Mail}
                       onChange={(selectedUser) => {
                         Onchangehandler("Mail", selectedUser);
                       }}
-                    /> */}
+                    />
                   </div>
 
                   {/* people picker */}
-                  <div className={styles.detailsSection}>
-                    <div>
-                      <Label>Excluded</Label>
-                    </div>
-                    <div>:</div>
-                    <div className={styles.clsPeoplepicker}>
-                      <PeoplePicker
-                        context={props.spcontext}
-                        personSelectionLimit={500}
-                        groupName={""}
-                        showtooltip={true}
-                        tooltipMessage="Mention people to exclude from selected department (if needed)"
-                        ensureUser={true}
-                        showHiddenInUI={false}
-                        principalTypes={[PrincipalType.User]}
-                        selectedItems={(user) => {
-                          Onchangehandler("Excluded", user);
+                  {valueObj.type == "new" && (
+                    <div className={styles.detailsSection}>
+                      <div>
+                        <Label>Excluded</Label>
+                      </div>
+                      <div>:</div>
+                      <NormalPeoplePicker
+                        styles={peoplePickerStyle}
+                        onResolveSuggestions={GetUserDetailsAzureUsers}
+                        itemLimit={500}
+                        selectedItems={valueObj.Excluded}
+                        onChange={(selectedUser) => {
+                          Onchangehandler("Excluded", selectedUser);
                         }}
-                        resolveDelay={10}
                       />
                     </div>
-                    {/* <NormalPeoplePicker
-                      styles={peoplePickerStyle}
-                      onResolveSuggestions={GetUserDetailsUserOnly}
-                      itemLimit={1000}
-                      selectedItems={valueObj.Excluded}
-                      onChange={(selectedUser) => {
-                        Onchangehandler("Excluded", selectedUser);
-                      }}
-                    /> */}
-                  </div>
+                  )}
 
                   {/* Quiz Section */}
                   <div
@@ -2245,13 +2407,25 @@ const Dashboard = (props: IProps): JSX.Element => {
                       <Label>Quiz</Label>
                     </div>
                     <div style={{ width: 0 }}>:</div>
-                    <TextField
-                      styles={textFieldstyle}
-                      value={valueObj.Quiz}
-                      onChange={(name) => {
-                        Onchangehandler("Quiz", name.target["value"]);
-                      }}
-                    />
+                    {valueObj.type == "edit" ? (
+                      <Label style={{ width: "auto", marginLeft: 13 }}>
+                        <a
+                          href={valueObj.Quiz}
+                          target="_blank"
+                          data-interception="off"
+                        >
+                          {valueObj.Quiz}
+                        </a>
+                      </Label>
+                    ) : (
+                      <TextField
+                        styles={textFieldstyle}
+                        value={valueObj.Quiz}
+                        onChange={(name) => {
+                          Onchangehandler("Quiz", name.target["value"]);
+                        }}
+                      />
+                    )}
                   </div>
 
                   {/* comments section */}
@@ -2300,22 +2474,23 @@ const Dashboard = (props: IProps): JSX.Element => {
                       if (!onSubmitLoader) {
                         setOnSubmitLoader(true);
                         validation();
-                        // addFile();
                       }
                     }}
                   >
                     {onSubmitLoader ? (
                       <Spinner styles={spinnerStyle} />
-                    ) : (
+                    ) : valueObj.type == "new" ? (
                       "Submit"
+                    ) : (
+                      "Update"
                     )}
                   </PrimaryButton>
                 </div>
               </div>
             </Modal>
           ) : null}
-          {/* Edit/View Popup */}
-          {valueObj.condition && valueObj.type == "edit" ? (
+          {/*View Popup */}
+          {valueObj.condition && valueObj.type == "view" ? (
             <Modal styles={editModalDesign} isOpen={valueObj.condition}>
               <div className={styles.ackPopup}>
                 {/* Header-Section starts */}

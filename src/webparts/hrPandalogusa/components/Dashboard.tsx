@@ -44,6 +44,9 @@ import { ILabelStyles } from "office-ui-fabric-react";
 import alertify from "alertifyjs";
 import "alertifyjs/build/css/alertify.css";
 
+import * as Excel from "exceljs/dist/exceljs.min.js";
+import * as FileSaver from "file-saver";
+
 const myTheme = createTheme({
   palette: {
     themePrimary: "#ff5e14",
@@ -107,9 +110,6 @@ interface IItems {
   Excluded: IPeople[];
   Link: string;
   created: string;
-  // PendingMembersID: number[];
-  // approvedMembersID: number[];
-  // approversID: number[];
   DocVersion: number;
   DocTitle: string;
   Comments: string;
@@ -136,6 +136,20 @@ interface IFilters {
   View: string;
 }
 
+interface IResponseData {
+  type: string;
+  Id: number;
+  Title: string;
+  Mail: any[];
+  Excluded: any[];
+  File: {};
+  FileName: string;
+  Valid: string;
+  FileLink: string;
+  Comments: string;
+  Obj: IItems;
+}
+
 let sortData = [];
 
 let isLoggedUserManager: boolean;
@@ -151,8 +165,6 @@ const Dashboard = (props: IProps): JSX.Element => {
 
   const HRDocName: string = props.docLibName;
   const HRCommentsName: string = props.commentsListName;
-
-  // debugger;
 
   const url: string = `/sites/${
     currentWebSite[currentWebSite.length - 1]
@@ -171,9 +183,9 @@ const Dashboard = (props: IProps): JSX.Element => {
     Uploader: "",
     View: "All Documents",
   };
-  let getDataObj = {
+  let getDataObj: IResponseData = {
     type: "",
-    Id: 0,
+    Id: null,
     Title: "",
     Mail: [],
     Excluded: [],
@@ -182,6 +194,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     Valid: "",
     FileLink: "",
     Comments: "",
+    Obj: null,
   };
 
   const dropDownOptions: IDropDownOptions = {
@@ -228,8 +241,8 @@ const Dashboard = (props: IProps): JSX.Element => {
   const _columns: IColumn[] = [
     {
       key: "column1",
-      name: "File Name",
-      fieldName: "Title",
+      name: "Title",
+      fieldName: "DocTitle",
       minWidth: 200,
       maxWidth: 400,
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
@@ -237,19 +250,18 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
       onRender: (item) => {
         return (
-          <a
-            href={item.Link}
-            target="_blank"
-            data-interception="off"
+          <div
+            title={item.DocTitle}
             style={{
+              fontWeight: 600,
               color: "#000",
-              textDecoration: "none",
               fontSize: 13,
               marginTop: 5,
+              cursor: "default",
             }}
           >
-            {item.Title}
-          </a>
+            {item.DocTitle}
+          </div>
         );
       },
     },
@@ -613,7 +625,7 @@ const Dashboard = (props: IProps): JSX.Element => {
             className={iconStyleClass.viewIcon}
             onClick={(): void => {
               let getDataObj = {
-                type: "edit",
+                type: "view",
                 Id: item.ID,
                 Title: item.DocTitle,
                 Mail: item.Signatories,
@@ -623,11 +635,34 @@ const Dashboard = (props: IProps): JSX.Element => {
                 Valid: "",
                 FileLink: item.Link,
                 Comments: item.Comments,
+                Obj: item,
               };
               setValueObj(getDataObj);
               setHideModal(true);
             }}
           />
+          {/* <Icon
+            title="Edit Details"
+            iconName="Edit"
+            className={iconStyleClass.editIcon}
+            onClick={(): void => {
+              let getDataObj = {
+                type: "edit",
+                Id: item.ID,
+                Title: item.DocTitle,
+                Mail: item.PendingMembers,
+                Excluded: item.Excluded,
+                File: {},
+                FileName: item.Title,
+                Valid: "",
+                FileLink: item.Link,
+                Comments: item.Comments,
+                Obj: item,
+              };
+              setValueObj(getDataObj);
+              setHideModal(true);
+            }}
+          /> */}
           <Icon
             title="Acknowlodgement"
             iconName={
@@ -751,24 +786,16 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
     ],
   });
-  const newmodalDesign: Partial<IModalStyles> = {
+
+  const modalStyle: Partial<IModalStyles> = {
     main: {
       padding: 10,
-      width: 505,
-      // height: 418,
+      width: "35%",
       height: "auto",
       borderRadius: 5,
     },
   };
-  const editmodalDesign: Partial<IModalStyles> = {
-    main: {
-      padding: 10,
-      width: 505,
-      // height: 400,
-      height: "auto",
-      borderRadius: 5,
-    },
-  };
+
   const deleteModalStyle: Partial<IModalStyles> = {
     main: {
       width: 390,
@@ -823,7 +850,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   const peoplePickerStyle = {
     root: {
       background: "#f5f8fa",
-      width: 319,
+      width: "90%",
       margin: "0 10px",
       ".ms-BasePicker-text": {
         minHeigth: 36,
@@ -844,7 +871,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   const peoplePickerDisabledStyle: Partial<IBasePickerStyles> = {
     root: {
       background: "#f5f8fa",
-      width: 319,
+      width: "90%",
       margin: "0 10px",
       ".ms-BasePicker-text": {
         backgroundColor: "#dfe1e0",
@@ -915,6 +942,13 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
       iconStyle,
     ],
+    editIcon: [
+      {
+        color: "#36b0ff",
+        cursor: "pointer",
+      },
+      iconStyle,
+    ],
     popupIcon: [
       {
         color: "#36b04b",
@@ -945,6 +979,14 @@ const Dashboard = (props: IProps): JSX.Element => {
         backgroundColor: "none",
       },
     },
+    export: {
+      color: "#038387",
+      fontSize: "18px",
+      height: 20,
+      width: 20,
+      cursor: "pointer",
+      marginRight: 5,
+    },
   });
 
   // State variable
@@ -952,7 +994,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   const [masterData, setMasterData] = useState<IItems[]>([]);
   const [FilterKeys, setFilterKeys] = useState<IFilters>(filterKeys);
   const [displayData, setdisplayData] = useState([]);
-  const [valueObj, setValueObj] = useState(getDataObj);
+  const [valueObj, setValueObj] = useState<IResponseData>(getDataObj);
   const [showModal, setHideModal] = useState(false);
   const [showDelModal, setHideDelModal] = useState({
     condition: false,
@@ -1094,9 +1136,6 @@ const Dashboard = (props: IProps): JSX.Element => {
             Excluded: _Excluded,
             Link: data.ServerRelativeUrl,
             created: data.TimeCreated,
-            // PendingMembersID: data.ListItemAllFields["PendingApproversId"],
-            // approvedMembersID: data.ListItemAllFields["ApprovedApproversId"],
-            // approversID: data.ListItemAllFields["ApproversId"],
             DocVersion: data.ListItemAllFields["DocVersion"]
               ? data.ListItemAllFields["DocVersion"]
               : null,
@@ -1107,6 +1146,7 @@ const Dashboard = (props: IProps): JSX.Element => {
             Uploader: _uploader.length > 0 ? _uploader[0] : null,
           });
         });
+
         let filteredData = getDataArray.filter((_value) => !_value.IsDeleted);
         sortData = [...filteredData];
         setnofillterData(getDataArray);
@@ -1155,7 +1195,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     }
     if (tempFilter.Title) {
       tempArr = tempArr.filter((arr) =>
-        arr.Title.toLowerCase().includes(tempFilter.Title.toLowerCase())
+        arr.DocTitle.toLowerCase().includes(tempFilter.Title.toLowerCase())
       );
     }
     if (tempFilter.Approvers) {
@@ -1213,36 +1253,42 @@ const Dashboard = (props: IProps): JSX.Element => {
 
   // modal Onchangehandler
   function Onchangehandler(key, val) {
-    let getDatatempArray = valueObj;
-    getDatatempArray[key] = val;
-    setValueObj({ ...getDatatempArray });
+    let _valueObj: IResponseData = { ...valueObj };
+    _valueObj[key] = val;
+    _valueObj.Valid = "";
+    setValueObj({ ..._valueObj });
   }
 
   // form validation
   function validation() {
-    let checkObj = valueObj;
+    let _valueObj: IResponseData = { ...valueObj };
     let isError = false;
-    if (!checkObj.Title.trim()) {
-      isError = true;
-      checkObj.Valid = "* Please Enter Title";
-    } else if (!checkObj.File) {
-      isError = true;
-      checkObj.Valid = "* Please Choose File";
-    } else if (checkObj.Mail.length == 0) {
-      isError = true;
-      checkObj.Valid = "* Please Select Signatories";
+
+    if (_valueObj.type == "new") {
+      if (!_valueObj.Title.trim()) {
+        isError = true;
+        _valueObj.Valid = "* Please Enter Title";
+      } else if (!_valueObj.File) {
+        isError = true;
+        _valueObj.Valid = "* Please Choose File";
+      } else if (_valueObj.Mail.length == 0) {
+        isError = true;
+        _valueObj.Valid = "* Please Select Signatories";
+      }
+    } else {
     }
-    setValueObj({ ...checkObj });
+
     if (isError == false) {
-      addFile(checkObj);
+      _valueObj.type == "new" ? addFile(_valueObj) : updateFile(_valueObj);
     } else {
       setOnSubmitLoader(false);
     }
+    setValueObj({ ..._valueObj });
   }
 
   // add file
   function addFile(_valueObj) {
-    let updateData = _valueObj;
+    let updateData = { ..._valueObj };
     let _docVersion: number = 1;
     let fileNameFilter: IItems[] = nofillterData.filter(
       (val) => val.FileName == updateData.File["name"]
@@ -1291,6 +1337,7 @@ const Dashboard = (props: IProps): JSX.Element => {
         results: excludedUsers,
       },
       NotAcknowledgedEmails: pendingApprovers,
+      AcknowledgedEmails: "",
       Status: "Pending",
       SubmittedOn: moment().format("YYYY-MM-DD"),
       Year: moment().year().toString(),
@@ -1306,9 +1353,9 @@ const Dashboard = (props: IProps): JSX.Element => {
             .update(responseData)
             .then((_) => {
               setValueObj(getDataObj);
-              setOnSubmitLoader(false);
               setHideModal(false);
-              getManagers();
+              setOnSubmitLoader(false);
+              init();
             })
             .catch((error) => {
               errorFunction(error, "addFile");
@@ -1319,6 +1366,10 @@ const Dashboard = (props: IProps): JSX.Element => {
         errorFunction("addFile", error);
       });
   }
+
+  const updateFile = (_valueObj) => {
+    debugger;
+  };
 
   const emailReturnFunction = (
     userArr: any[],
@@ -1363,17 +1414,17 @@ const Dashboard = (props: IProps): JSX.Element => {
   };
 
   // delete function
-  function deleteFunction(val) {
+  const deleteFunction = (val): void => {
     sp.web.lists
       .getByTitle(HRDocName)
       .items.getById(val)
       .update({ IsDelete: true })
       .then(() => {
-        getManagers();
         setHideDelModal({ condition: false, targetID: null });
         setOnSubmitLoader(false);
+        init();
       });
-  }
+  };
 
   // sorting data
   const _onColumnClick = (
@@ -1448,6 +1499,27 @@ const Dashboard = (props: IProps): JSX.Element => {
     }
     var result = _allPeoples.filter(
       (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
+    );
+
+    return result.filter((item) =>
+      doesTextStartWith(item.text as string, filterText)
+    );
+  };
+
+  const GetUserDetailsAzureUsers = (filterText: any, currentPersonas) => {
+    let _allPeoples = props.azureUsers;
+
+    if (currentPersonas.length > 0) {
+      _allPeoples = _allPeoples.filter(
+        (_people) =>
+          !currentPersonas.some(
+            (persona) => persona.secondaryText == _people.secondaryText
+          )
+      );
+    }
+    var result = _allPeoples.filter(
+      (value, index, self) =>
+        index === self.findIndex((t) => t.secondaryText === value.secondaryText)
     );
 
     return result.filter((item) =>
@@ -1630,18 +1702,93 @@ const Dashboard = (props: IProps): JSX.Element => {
           commentsValidation: false,
           overAllValidation: false,
         });
-        settableLoader(true);
-        getManagers();
+        init();
       })
       .catch((error) => {
         errorFunction(error, "addAcknowlegdementComments");
       });
   };
 
-  // useEffect
-  React.useEffect(() => {
+  const generateExcel = (): void => {
+    let _data: IItems[] = [...paginatedData];
+    const workbook = new Excel.Workbook();
+    const worksheet = workbook.addWorksheet("My Sheet");
+    worksheet.columns = [
+      { header: "Title", key: "DocTitle", width: 30 }, // A
+      { header: "Uploaded By", key: "Uploader", width: 30 }, // B
+      { header: "Submitted On", key: "created", width: 30 }, // C
+      { header: "Status", key: "Status", width: 30 }, // D
+      { header: "Signatories", key: "Signatories", width: 30 }, // E
+      { header: "Acknowledged", key: "ApprovedMembers", width: 30 }, // F
+      { header: "Not Acknowledge", key: "PendingMembers", width: 30 }, // G
+    ];
+    _data.forEach((item: IItems) => {
+      let signatoriesEmails: string =
+        item.Signatories.length > 0
+          ? item.Signatories.map((user) => user.text).join(";")
+          : "";
+
+      let acknowledgedEmails: string =
+        item.ApprovedMembers.length > 0
+          ? item.ApprovedMembers.map((user) => user.text).join(";")
+          : "";
+
+      let notAcknowledgedEmails: string =
+        item.PendingMembers.length > 0
+          ? item.PendingMembers.map((user) => user.text).join(";")
+          : "";
+
+      worksheet.addRow({
+        DocTitle: item.DocTitle ? item.DocTitle : "",
+        Uploader: item.Uploader ? item.Uploader.text : "",
+        created: item.created ? moment(item.created).format("DD/MM/YYYY") : "",
+        Status: item.Status ? item.Status : "",
+        Signatories: signatoriesEmails,
+        ApprovedMembers: acknowledgedEmails,
+        PendingMembers: notAcknowledgedEmails,
+      });
+    });
+    ["A1", "B1", "C1", "D1", "E1", "F1", "G1"].map((key) => {
+      worksheet.getCell(key).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "ff5e14" },
+      };
+    });
+    ["A1", "B1", "C1", "D1", "E1", "F1", "G1"].map((key) => {
+      worksheet.getCell(key).color = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "ffffff" },
+      };
+    });
+    workbook.xlsx
+      .writeBuffer()
+      .then((buffer) =>
+        FileSaver.saveAs(
+          new Blob([buffer]),
+          `test-${new Date().toLocaleString()}.xlsx`
+        )
+      )
+      .catch((err) => console.log("Error writing excel export", err));
+  };
+
+  const init = (): void => {
     settableLoader(true);
-    getManagers();
+
+    if (HRDocName || HRCommentsName) {
+      getManagers();
+    } else {
+      errorFunction(
+        "Invalid Document Library or List",
+        "InvalidPropertyPaneValue"
+      );
+    }
+  };
+
+  // useEffect
+  useEffect(() => {
+    init();
   }, []);
 
   return (
@@ -1663,9 +1810,9 @@ const Dashboard = (props: IProps): JSX.Element => {
               <div className={styles.filterSection}>
                 <div className={styles.searchFlex}>
                   <div>
-                    <Label>File Name</Label>
+                    <Label>Title</Label>
                     <SearchBox
-                      placeholder="Search File Name"
+                      placeholder="Search Title"
                       styles={searchStyle}
                       value={FilterKeys.Title}
                       onChange={(e, text) => {
@@ -1745,27 +1892,54 @@ const Dashboard = (props: IProps): JSX.Element => {
                   </div>
                 </div>
                 {/* filter section ends */}
-                {/* new button */}
-                {/* <TextField
-            type="file"
-            onChange={(file) => {
-              addFile(file);
-            }}
-          /> */}
-                {isLoggedUserManager ? (
+
+                <div style={{ display: "flex" }}>
                   <div>
-                    <PrimaryButton
-                      text="New"
-                      className={styles.newBtn}
+                    <Label
                       onClick={() => {
-                        setHideModal(true);
-                        valueObj.Id = 0;
-                        valueObj.type = "new";
-                        setValueObj({ ...valueObj });
+                        generateExcel();
                       }}
-                    />
+                      style={{
+                        width: "max-content",
+                        backgroundColor: "#EBEBEB",
+                        padding: "7px 15px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "3px",
+                        color: "#1D6F42",
+                        marginRight: 10,
+                        marginTop: 15,
+                      }}
+                    >
+                      <Icon
+                        style={{
+                          color: "#1D6F42",
+                        }}
+                        iconName="ExcelDocument"
+                        className={iconStyleClass.export}
+                      />
+                      Export as XLS
+                    </Label>
                   </div>
-                ) : null}
+                  {isLoggedUserManager ? (
+                    <div>
+                      <PrimaryButton
+                        text="New"
+                        className={styles.newBtn}
+                        onClick={() => {
+                          setHideModal(true);
+                          let _valueObj: IResponseData = { ...valueObj };
+                          _valueObj.Id = null;
+                          _valueObj.type = "new";
+                          setValueObj({ ..._valueObj });
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </div>
               {/* filter section ends */}
 
@@ -1809,14 +1983,13 @@ const Dashboard = (props: IProps): JSX.Element => {
 
           {/*  new and view modal section */}
           {showModal ? (
-            <Modal
-              styles={valueObj.type == "new" ? newmodalDesign : editmodalDesign}
-              isOpen={showModal}
-            >
+            <Modal styles={modalStyle} isOpen={showModal}>
               <div className={styles.modalCustomDesign}>
                 <div className={styles.header}>
                   {valueObj.type == "new" ? (
                     <h2>New Document</h2>
+                  ) : valueObj.type == "edit" ? (
+                    <h2>Edit Document</h2>
                   ) : (
                     <h2>View Document</h2>
                   )}
@@ -1831,20 +2004,35 @@ const Dashboard = (props: IProps): JSX.Element => {
                   >
                     <div>
                       <Label>
-                        Title <span style={{ color: "red" }}>*</span>
+                        Title{" "}
+                        {valueObj.type == "new" && (
+                          <span style={{ color: "red" }}>*</span>
+                        )}
                       </Label>
                     </div>
                     <div style={{ width: 0 }}>:</div>
-                    <TextField
-                      styles={textFieldstyle}
-                      value={valueObj.Title}
-                      readOnly={valueObj.type == "edit"}
-                      onChange={(name) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
-                        Onchangehandler("Title", name.target["value"]);
-                      }}
-                    ></TextField>
+                    {valueObj.type == "new" ? (
+                      <TextField
+                        styles={textFieldstyle}
+                        value={valueObj.Title}
+                        onChange={(name) => {
+                          Onchangehandler("Title", name.target["value"]);
+                        }}
+                      />
+                    ) : (
+                      <div style={{ width: 290, margin: "0 10px" }}>
+                        <Label
+                          styles={{
+                            root: {
+                              width: "100% !important",
+                              fontSize: 16,
+                            },
+                          }}
+                        >
+                          {valueObj.Title}
+                        </Label>
+                      </div>
+                    )}
                   </div>
                   {/* file */}
                   <div
@@ -1853,73 +2041,88 @@ const Dashboard = (props: IProps): JSX.Element => {
                   >
                     <div>
                       <Label>
-                        File <span style={{ color: "red" }}>*</span>
+                        File{" "}
+                        {valueObj.type == "new" && (
+                          <span style={{ color: "red" }}>*</span>
+                        )}
                       </Label>
                     </div>
                     <div>:</div>
                     {valueObj.type == "new" ? (
-                      <>
-                        <div>
-                          <input
-                            style={{ margin: "0 10px" }}
-                            className={styles.fileStyle}
-                            type="file"
-                            id="uploadFile"
-                            // disabled={valueObj.type == "edit"}
-                            onChange={(file) => {
-                              valueObj.Valid = "";
-                              setValueObj(valueObj);
-                              Onchangehandler("File", file.target["files"][0]);
-                            }}
-                          />
-                        </div>
-                      </>
-                    ) : null}
-                    {valueObj.Id != 0 && (
-                      <>
-                        <div style={{ width: 290, margin: "0 10px" }}>
-                          {/* <Label style={{ width: 105 }}></Label> */}
-                          <Label
-                            styles={{
-                              root: {
-                                width: "100% !important",
-                                fontSize: 16,
-                              },
-                            }}
+                      <div>
+                        <input
+                          style={{ margin: "0 10px" }}
+                          className={styles.fileStyle}
+                          type="file"
+                          id="uploadFile"
+                          onChange={(file) => {
+                            Onchangehandler("File", file.target["files"][0]);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ width: 290, margin: "0 10px" }}>
+                        <Label
+                          styles={{
+                            root: {
+                              width: "100% !important",
+                              fontSize: 16,
+                            },
+                          }}
+                        >
+                          <a
+                            target="_blank"
+                            data-interception="off"
+                            href={valueObj.FileLink}
                           >
-                            <a
-                              target="_blank"
-                              data-interception="off"
-                              href={valueObj.FileLink}
-                            >
-                              {valueObj.FileName}
-                            </a>
-                          </Label>
-                        </div>
-                      </>
+                            {valueObj.FileName}
+                          </a>
+                        </Label>
+                      </div>
                     )}
                   </div>
                   {/* people picker */}
+                  {valueObj.type == "edit" && (
+                    <div className={styles.detailsSection}>
+                      <div>
+                        <Label>Acknowledged</Label>
+                      </div>
+                      <div>:</div>
+                      <NormalPeoplePicker
+                        styles={peoplePickerDisabledStyle}
+                        onResolveSuggestions={GetUserDetailsAzureUsers}
+                        itemLimit={10000}
+                        disabled={true}
+                        selectedItems={valueObj.Obj.ApprovedMembers}
+                      />
+                    </div>
+                  )}
+
                   <div className={styles.detailsSection}>
                     <div>
                       <Label>
-                        Signatories <span style={{ color: "red" }}>*</span>
+                        Signatories{" "}
+                        {valueObj.type == "new" && (
+                          <span style={{ color: "red" }}>*</span>
+                        )}
                       </Label>
                     </div>
                     <div>:</div>
                     <NormalPeoplePicker
                       styles={
-                        valueObj.type == "edit"
+                        valueObj.type == "view"
                           ? peoplePickerDisabledStyle
                           : peoplePickerStyle
                       }
-                      onResolveSuggestions={GetUserDetails}
-                      itemLimit={10}
-                      disabled={valueObj.type == "edit"}
+                      onResolveSuggestions={
+                        valueObj.type == "new"
+                          ? GetUserDetails
+                          : GetUserDetailsAzureUsers
+                      }
+                      itemLimit={500}
+                      disabled={valueObj.type == "view"}
                       selectedItems={valueObj.Mail}
                       onChange={(selectedUser) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
                         Onchangehandler("Mail", selectedUser);
                       }}
                     />
@@ -1933,17 +2136,15 @@ const Dashboard = (props: IProps): JSX.Element => {
                     <div>:</div>
                     <NormalPeoplePicker
                       styles={
-                        valueObj.type == "edit"
+                        valueObj.type == "view"
                           ? peoplePickerDisabledStyle
                           : peoplePickerStyle
                       }
                       onResolveSuggestions={GetUserDetailsUserOnly}
                       itemLimit={10}
-                      disabled={valueObj.type == "edit"}
+                      disabled={valueObj.type == "view"}
                       selectedItems={valueObj.Excluded}
                       onChange={(selectedUser) => {
-                        valueObj.Valid = "";
-                        setValueObj(valueObj);
                         Onchangehandler("Excluded", selectedUser);
                       }}
                     />
@@ -1960,10 +2161,8 @@ const Dashboard = (props: IProps): JSX.Element => {
                       style={{ resize: "none" }}
                       value={valueObj.Comments}
                       multiline
-                      readOnly={valueObj.type == "edit"}
+                      readOnly={valueObj.type == "view"}
                       onChange={(name) => {
-                        // valueObj.Valid = "";
-                        // setValueObj(valueObj);
                         Onchangehandler("Comments", name.target["value"]);
                       }}
                     ></TextField>
@@ -1982,11 +2181,6 @@ const Dashboard = (props: IProps): JSX.Element => {
 
                   <PrimaryButton
                     className={styles.cancelBtn}
-                    style={
-                      valueObj.type == "new"
-                        ? { marginRight: 15 }
-                        : { marginRight: 0 }
-                    }
                     text="Cancel"
                     onClick={() => {
                       if (!onSubmitLoader) {
@@ -1996,7 +2190,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       }
                     }}
                   />
-                  {valueObj.type == "new" ? (
+                  {valueObj.type != "view" ? (
                     <>
                       <PrimaryButton
                         className={styles.submitBtn}
@@ -2005,14 +2199,15 @@ const Dashboard = (props: IProps): JSX.Element => {
                           if (!onSubmitLoader) {
                             setOnSubmitLoader(true);
                             validation();
-                            // addFile();
                           }
                         }}
                       >
                         {onSubmitLoader ? (
                           <Spinner styles={spinnerStyle} />
-                        ) : (
+                        ) : valueObj.type == "new" ? (
                           "Submit"
+                        ) : (
+                          "Update"
                         )}
                       </PrimaryButton>
                     </>
