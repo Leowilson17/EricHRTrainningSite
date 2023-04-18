@@ -39,6 +39,8 @@
     "spfx-fast-serve-helpers": "~1.14.0",
     "office-ui-fabric-react-pagination": "0.0.8",
     "@pnp/sp": "^2.11.0",
-    "@pnp/graph": "^2.11.0"
+    "@pnp/graph": "^2.11.0",
+    "exceljs": "^4.1.1",
+    "file-saver": "^2.0.2"
   }
 }

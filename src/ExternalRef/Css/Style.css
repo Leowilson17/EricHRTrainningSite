@@ -46,3 +46,8 @@
 .ms-BasePicker-input {
   background-color: #f5f8fa !important;
 }
+
+.ms-DetailsHeader-cellTitle > i {
+  color: #ffffff !important;
+  font-weight: 600;
+}

@@ -94,6 +94,7 @@ export default class TrainingWebPart extends BaseClientSideWebPart<ITrainingWebP
                 }),
                 PropertyPaneTextField("docLibName", {
                   label: 'Document Library Name',
+
                 }),
                 PropertyPaneTextField("commentsListName", {
                   label: 'Comments List Name',

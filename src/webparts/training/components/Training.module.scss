@@ -19,7 +19,7 @@
   .filterSection {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    // align-items: center;
 
     .searchFlex {
       display: flex;
@@ -40,7 +40,7 @@
 
   .newBtn {
     border: none;
-    margin-top: 15px;
+    // margin-top: 15px;
   }
 
   .newBtn:hover {
@@ -66,10 +66,12 @@
 
 .modalCustomDesign {
   .header {
-    h2 {
+    Label {
       margin: 10px 0px;
       text-align: center;
       color: #ff5e14;
+      font-size: 21px;
+      font-weight: 700;
     }
   }
 
@@ -86,7 +88,7 @@
 
     label {
       padding: 0;
-      width: 90px;
+      width: 120px;
       // font-family: "arial, helvetica, sans-serif;",
     }
 
@@ -187,7 +189,9 @@
 .clsPeoplepicker {
   //   width: 465px;
   width: 90%;
-  height: auto;
+  min-height: 34px;
+  max-height: 150px;
+  overflow: auto;
   text-align: left;
   margin-left: 10px;
   margin-right: 14px;
