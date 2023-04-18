@@ -495,10 +495,10 @@ const Dashboard = (props: IProps): JSX.Element => {
       onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
         _onColumnClick(ev, column);
       },
-      onRender: (item) => {
+      onRender: (item: IItems) => {
         let completionPercentage: number = getCompletionPercentage(
-          item.ApprovedMembers.length,
-          item.PendingMembers.length
+          item.QuizApprovedMembers.length,
+          item.QuizPendingMembers.length
         );
         return (
           <>
