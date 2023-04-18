@@ -1990,7 +1990,7 @@ const Dashboard = (props: IProps): JSX.Element => {
       .then((buffer) =>
         FileSaver.saveAs(
           new Blob([buffer]),
-          `test-${new Date().toLocaleString()}.xlsx`
+          `Training-${new Date().toLocaleString()}.xlsx`
         )
       )
       .catch((err) => console.log("Error writing excel export", err));
