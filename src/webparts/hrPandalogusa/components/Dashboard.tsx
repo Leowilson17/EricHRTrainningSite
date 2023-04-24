@@ -36,6 +36,8 @@ import {
   ThemeProvider,
   Icon,
   ITextFieldStyles,
+  Toggle,
+  IToggleStyles,
 } from "@fluentui/react";
 import Pagination from "office-ui-fabric-react-pagination";
 import { loadTheme, createTheme, Theme } from "@fluentui/react";
@@ -116,6 +118,7 @@ interface IItems {
   FileName: string;
   IsDeleted: boolean;
   Uploader: IPeople;
+  Expired: boolean;
 }
 interface IDropDown {
   key: string;
@@ -134,6 +137,7 @@ interface IFilters {
   submittedDate: any;
   Uploader: string;
   View: string;
+  ShowAll: boolean;
 }
 
 interface IResponseData {
@@ -151,6 +155,7 @@ interface IResponseData {
 }
 
 let sortData = [];
+let sortFilteredData = [];
 
 let isLoggedUserManager: boolean;
 
@@ -182,6 +187,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     submittedDate: null,
     Uploader: "",
     View: "All Documents",
+    ShowAll: false,
   };
   let getDataObj: IResponseData = {
     type: "",
@@ -641,7 +647,7 @@ const Dashboard = (props: IProps): JSX.Element => {
               setHideModal(true);
             }}
           />
-          {/* <Icon
+          <Icon
             title="Edit Details"
             iconName="Edit"
             className={iconStyleClass.editIcon}
@@ -662,7 +668,7 @@ const Dashboard = (props: IProps): JSX.Element => {
               setValueObj(getDataObj);
               setHideModal(true);
             }}
-          /> */}
+          />
           <Icon
             title="Acknowlodgement"
             iconName={
@@ -928,6 +934,14 @@ const Dashboard = (props: IProps): JSX.Element => {
       },
     },
   };
+  const toggleStyles: Partial<IToggleStyles> = {
+    root: {
+      minWidth: 30,
+      padding: 0,
+      marginTop: 4,
+      marginLeft: 7,
+    },
+  };
   const iconStyle = {
     padding: 0,
     fontSize: 18,
@@ -973,7 +987,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     refreshIcon: {
       fontSize: 22,
       cursor: "pointer",
-      marginTop: 5,
+      marginTop: 3,
       color: "#ff5e14",
       ":hover": {
         backgroundColor: "none",
@@ -1026,9 +1040,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     overAllValidation: false,
   });
 
-  // function
-
-  const getManagers = () => {
+  const getManagers = (fileName?: string) => {
     sp.web.siteGroups
       .getByName("Managers")
       .users.get()
@@ -1046,7 +1058,9 @@ const Dashboard = (props: IProps): JSX.Element => {
           ? "All Documents"
           : "Pending Acknowledgement";
 
-        setFilterKeys({ ..._filterKeys });
+        _filterKeys.Title = fileName ? fileName : "";
+
+        // setFilterKeys({ ..._filterKeys });
 
         getDatafromLibrary(_filterKeys);
       })
@@ -1055,9 +1069,9 @@ const Dashboard = (props: IProps): JSX.Element => {
       });
   };
   // get Document from Library
-  function getDatafromLibrary(filterKeys: IFilters) {
+  const getDatafromLibrary = (filterKeys: IFilters): void => {
     // settableLoader(true);
-    const getDataArray: IItems[] = [];
+    let getDataArray: IItems[] = [];
     sp.web
       .getFolderByServerRelativePath(url)
       .files.select("*,Author/Title,Author/EMail")
@@ -1117,11 +1131,20 @@ const Dashboard = (props: IProps): JSX.Element => {
           // Excluded
           _Excluded = [];
 
-          data.ListItemAllFields["ExcludedId"] &&
-            data.ListItemAllFields["ExcludedId"].forEach((val) => {
+          // data.ListItemAllFields["ExcludedId"] &&
+          //   data.ListItemAllFields["ExcludedId"].forEach((val) => {
+          //     let tempArr = [];
+          //     tempArr = allPeoples.filter((arr) => {
+          //       return arr.ID == val;
+          //     });
+          //     if (tempArr.length > 0) _Excluded.push(tempArr[0]);
+          //   });
+
+          data.ListItemAllFields["Excluded"] &&
+            data.ListItemAllFields["Excluded"].split(";").forEach((val) => {
               let tempArr = [];
-              tempArr = allPeoples.filter((arr) => {
-                return arr.ID == val;
+              tempArr = props.azureUsers.filter((users) => {
+                return val && users.secondaryText == val;
               });
               if (tempArr.length > 0) _Excluded.push(tempArr[0]);
             });
@@ -1140,127 +1163,159 @@ const Dashboard = (props: IProps): JSX.Element => {
               ? data.ListItemAllFields["DocVersion"]
               : null,
             DocTitle: data.ListItemAllFields["DocTitle"],
-            Comments: data.ListItemAllFields["Comments"],
+            Comments: data.ListItemAllFields["Comments"]
+              ? data.ListItemAllFields["Comments"]
+              : "",
             FileName: data.ListItemAllFields["FileName"],
             IsDeleted: data.ListItemAllFields["IsDelete"] ? true : false,
             Uploader: _uploader.length > 0 ? _uploader[0] : null,
+            Expired: false,
           });
         });
 
-        let filteredData = getDataArray.filter((_value) => !_value.IsDeleted);
-        sortData = [...filteredData];
-        setnofillterData(getDataArray);
-        setMasterData(filteredData);
+        getDataArray = getDataArray.filter((_value) => !_value.IsDeleted);
+        getDataArray = isExpiredFunction(getDataArray);
 
-        if (filterKeys.View != "All Documents") {
-          if (filterKeys.View == "My Uploads") {
-            filteredData = filteredData.filter(
-              (_value: IItems) =>
-                _value.Uploader != null &&
-                _value.Uploader.secondaryText == loggedUserEmail
-            );
-          } else if (filterKeys.View == "My Acknowledgement") {
-            filteredData = filteredData.filter((_value: IItems) =>
-              _value.Signatories.some(
-                (people: IPeople) => people.secondaryText == loggedUserEmail
-              )
-            );
-          } else if (filterKeys.View == "Pending Acknowledgement") {
-            filteredData = filteredData.filter((_value: IItems) =>
-              _value.PendingMembers.some(
-                (people: IPeople) => people.secondaryText == loggedUserEmail
-              )
-            );
-          }
-        }
-        setdisplayData(filteredData);
-        paginateFunction(1, filteredData);
+        sortData = [...getDataArray];
+        setnofillterData([...getDataArray]);
+        setMasterData([...getDataArray]);
+
+        filterFunction(getDataArray, filterKeys);
         settableLoader(false);
       })
       .catch((error) => {
         errorFunction("getDatafromLibrary", error);
       });
-  }
+  };
+
+  const isExpiredFunction = (_data: IItems[]): IItems[] => {
+    let data_: IItems[] = _data;
+
+    const isExpired = (data: IItems) => {
+      const filteredData: IItems[] = data_.filter(
+        (fil) => fil.FileName == data.FileName
+      );
+
+      const maxVersion = Math.max(...filteredData.map((o) => o.DocVersion));
+
+      return data.DocVersion == maxVersion ? false : true;
+    };
+
+    _data.forEach((d) => {
+      d.Expired = isExpired(d);
+    });
+    return _data;
+  };
+
+  const getComments = (targetID: number, title: string): void => {
+    sp.web.lists
+      .getByTitle(HRCommentsName)
+      .items.select(
+        "*,Author/Title,HRDoc/DocTitle,HRDoc/FileName,HRDoc/DocVersion"
+      )
+      .expand("Author,HRDoc")
+      .filter(`HRDocId eq ${targetID}`)
+      .get()
+      .then((items) => {
+        generateExcelComments(items, title);
+      })
+      .catch((err) => {
+        errorFunction(err, "getComments");
+      });
+  };
 
   //  search filter
-  function filterFunction(key: string, val: any): void {
-    let tempArr: IItems[] = masterData;
-    let tempFilter: IFilters = FilterKeys;
-    tempFilter[key] = val;
+  const filterOnChangeHandler = (key: string, val: any): void => {
+    let _masterData: IItems[] = [...masterData];
+    let _filterKeys: IFilters = { ...FilterKeys };
+    _filterKeys[key] = val;
 
-    if (tempFilter.Status != "All") {
-      tempArr = tempArr.filter((arr) => {
-        return arr.Status == tempFilter.Status;
+    filterFunction(_masterData, _filterKeys);
+  };
+  const filterFunction = (
+    _masterData: IItems[],
+    _filterKeys: IFilters
+  ): void => {
+    if (_filterKeys.Status != "All") {
+      _masterData = _masterData.filter((arr) => {
+        return arr.Status == _filterKeys.Status;
       });
     }
-    if (tempFilter.Title) {
-      tempArr = tempArr.filter((arr) =>
-        arr.DocTitle.toLowerCase().includes(tempFilter.Title.toLowerCase())
+    if (_filterKeys.Title) {
+      _masterData = _masterData.filter((arr) =>
+        arr.DocTitle.toLowerCase().includes(_filterKeys.Title.toLowerCase())
       );
     }
-    if (tempFilter.Approvers) {
-      tempArr = tempArr.filter((arr) => {
+    if (_filterKeys.Approvers) {
+      _masterData = _masterData.filter((arr) => {
         return arr.Signatories.some((app) =>
-          app.text.toLowerCase().includes(tempFilter.Approvers.toLowerCase())
+          app.text.toLowerCase().includes(_filterKeys.Approvers.toLowerCase())
         );
       });
     }
-    if (tempFilter.Uploader) {
-      tempArr = tempArr.filter((arr: IItems) => {
+    if (_filterKeys.Uploader) {
+      _masterData = _masterData.filter((arr: IItems) => {
         return (
           arr.Uploader != null &&
           arr.Uploader.text
             .toLowerCase()
-            .includes(tempFilter.Uploader.toLowerCase())
+            .includes(_filterKeys.Uploader.toLowerCase())
         );
       });
     }
 
-    if (tempFilter.submittedDate != null) {
-      tempArr = tempArr.filter((arr) => {
+    if (_filterKeys.submittedDate != null) {
+      _masterData = _masterData.filter((arr) => {
         return (
           moment(arr.created).format("DD/MM/YYYY") ==
-          moment(tempFilter.submittedDate).format("DD/MM/YYYY")
+          moment(_filterKeys.submittedDate).format("DD/MM/YYYY")
         );
       });
     }
 
-    if (tempFilter.View != "All Documents") {
-      if (tempFilter.View == "My Uploads") {
-        tempArr = tempArr.filter(
+    if (_filterKeys.View != "All Documents") {
+      if (_filterKeys.View == "My Uploads") {
+        _masterData = _masterData.filter(
           (_value: IItems) =>
             _value.Uploader != null &&
             _value.Uploader.secondaryText == loggedUserEmail
         );
-      } else if (tempFilter.View == "My Acknowledgement") {
-        tempArr = tempArr.filter((_value: IItems) =>
+      } else if (_filterKeys.View == "My Acknowledgement") {
+        _masterData = _masterData.filter((_value: IItems) =>
           _value.Signatories.some(
             (people: IPeople) => people.secondaryText == loggedUserEmail
           )
         );
-      } else if (tempFilter.View == "Pending Acknowledgement") {
-        tempArr = tempArr.filter((_value: IItems) =>
+      } else if (_filterKeys.View == "Pending Acknowledgement") {
+        _masterData = _masterData.filter((_value: IItems) =>
           _value.PendingMembers.some(
             (people: IPeople) => people.secondaryText == loggedUserEmail
           )
         );
       }
     }
-    setdisplayData([...tempArr]);
-    setFilterKeys({ ...tempFilter });
-    paginateFunction(1, tempArr);
-  }
+    if (_filterKeys.ShowAll == false) {
+      _masterData = _masterData.filter(
+        (_value: IItems) => _value.Expired == false
+      );
+    }
+
+    sortFilteredData = _masterData;
+    setdisplayData([..._masterData]);
+    setFilterKeys({ ..._filterKeys });
+    paginateFunction(1, _masterData);
+  };
 
   // modal Onchangehandler
-  function Onchangehandler(key, val) {
+  const Onchangehandler = (key, val): void => {
     let _valueObj: IResponseData = { ...valueObj };
     _valueObj[key] = val;
     _valueObj.Valid = "";
     setValueObj({ ..._valueObj });
-  }
+  };
 
   // form validation
-  function validation() {
+  const validation = (): void => {
     let _valueObj: IResponseData = { ...valueObj };
     let isError = false;
 
@@ -1274,9 +1329,31 @@ const Dashboard = (props: IProps): JSX.Element => {
       } else if (_valueObj.Mail.length == 0) {
         isError = true;
         _valueObj.Valid = "* Please Select Signatories";
+      } else if (
+        _valueObj.Mail.filter(
+          (user) =>
+            !_valueObj.Excluded.some(
+              (_user) => _user.secondaryText == user.secondaryText
+            )
+        ).length == 0
+      ) {
+        isError = true;
+        _valueObj.Valid = "* Please Valid Signatories";
       }
-    } else {
     }
+    // else {
+    //   if (
+    //     _valueObj.Mail.filter(
+    //       (user) =>
+    //         !_valueObj.Excluded.some(
+    //           (_user) => _user.secondaryText == user.secondaryText
+    //         )
+    //     ).length == 0
+    //   ) {
+    //     isError = true;
+    //     _valueObj.Valid = "* Please Select Valid Signatories";
+    //   }
+    // }
 
     if (isError == false) {
       _valueObj.type == "new" ? addFile(_valueObj) : updateFile(_valueObj);
@@ -1284,14 +1361,13 @@ const Dashboard = (props: IProps): JSX.Element => {
       setOnSubmitLoader(false);
     }
     setValueObj({ ..._valueObj });
-  }
+  };
 
   // add file
-  function addFile(_valueObj) {
-    let updateData = { ..._valueObj };
+  const addFile = (_valueObj: IResponseData): void => {
     let _docVersion: number = 1;
     let fileNameFilter: IItems[] = nofillterData.filter(
-      (val) => val.FileName == updateData.File["name"]
+      (val) => val.FileName == _valueObj.File["name"]
     );
 
     if (fileNameFilter.length > 0) {
@@ -1301,80 +1377,133 @@ const Dashboard = (props: IProps): JSX.Element => {
       _docVersion = fileNameFilter[0].DocVersion + 1;
     }
 
-    let fileNameArr = updateData.File["name"].split(".");
+    let fileNameArr = _valueObj.File["name"].split(".");
     fileNameArr[fileNameArr.length - 2] =
       fileNameArr[fileNameArr.length - 2] + "v" + _docVersion;
     let fileName = fileNameArr.join(".");
 
-    // let filteredsignatories: any[] = updateData.Mail.filter(
-    //   (_sign) =>
-    //     !updateData.Excluded.some(
-    //       (exclude) => exclude.secondaryText == _sign.secondaryText
-    //     )
-    // );
-
-    let approvers: number[] = updateData.Mail.map((people) => people.ID);
+    let approvers: number[] = _valueObj.Mail.map((people) => people.ID);
 
     let excludedUsers: number[] =
-      updateData.Excluded.length > 0
-        ? updateData.Excluded.map((people) => people.ID)
+      _valueObj.Excluded.length > 0
+        ? _valueObj.Excluded.map((people) => people.secondaryText)
         : [];
 
-    let pendingApprovers: string = emailReturnFunction(
-      updateData.Mail,
-      updateData.Excluded
+    let pendingApprovers: string[] = emailReturnFunction(
+      _valueObj.Mail,
+      _valueObj.Excluded
     );
 
-    let responseData = {
-      DocTitle: updateData.Title.trim(),
-      DocVersion: _docVersion,
-      Comments: updateData.Comments.trim(),
-      FileName: updateData.File["name"],
-      SignatoriesId: {
-        results: approvers,
-      },
-      ExcludedId: {
-        results: excludedUsers,
-      },
-      NotAcknowledgedEmails: pendingApprovers,
-      AcknowledgedEmails: "",
-      Status: "Pending",
-      SubmittedOn: moment().format("YYYY-MM-DD"),
-      Year: moment().year().toString(),
-      Week: moment().isoWeek().toString(),
-    };
+    if (pendingApprovers.length > 0) {
+      let responseData = {
+        DocTitle: _valueObj.Title.trim(),
+        DocVersion: _docVersion,
+        Comments: _valueObj.Comments.trim(),
+        FileName: _valueObj.File["name"],
+        SignatoriesId: {
+          results: approvers,
+        },
+        Excluded: excludedUsers.join(";"),
+        NotAcknowledgedEmails: pendingApprovers.join(";"),
+        AcknowledgedEmails: "",
+        Status: "Pending",
+        SubmittedOn: moment().format("YYYY-MM-DD"),
+        Year: moment().year().toString(),
+        Week: moment().isoWeek().toString(),
+      };
 
-    sp.web
-      .getFolderByServerRelativePath(url)
-      .files.add(fileName, updateData.File, false)
-      .then((data) => {
-        data.file.getItem().then((item) => {
-          item
-            .update(responseData)
-            .then((_) => {
-              setValueObj(getDataObj);
-              setHideModal(false);
-              setOnSubmitLoader(false);
-              init();
-            })
-            .catch((error) => {
-              errorFunction(error, "addFile");
-            });
+      sp.web
+        .getFolderByServerRelativePath(url)
+        .files.add(fileName, _valueObj.File, false)
+        .then((data) => {
+          data.file.getItem().then((item) => {
+            item
+              .update(responseData)
+              .then((_) => {
+                setValueObj(getDataObj);
+                setHideModal(false);
+                setOnSubmitLoader(false);
+                init();
+              })
+              .catch((error) => {
+                errorFunction(error, "addFile");
+              });
+          });
+        })
+        .catch((error) => {
+          errorFunction("addFile", error);
         });
-      })
-      .catch((error) => {
-        errorFunction("addFile", error);
-      });
-  }
+    } else {
+      _valueObj.Valid = "* Please Valid Signatories";
+      setValueObj({ ..._valueObj });
+      setOnSubmitLoader(false);
+    }
+  };
 
-  const updateFile = (_valueObj) => {
-    debugger;
+  const updateFile = (_valueObj: IResponseData): void => {
+    let _excludedUsers: string[] = _valueObj.Excluded.map(
+      (user) => user.secondaryText
+    );
+    let _pendingUsers: string[] = _valueObj.Mail.filter(
+      (user: IPeople) =>
+        !_valueObj.Excluded.some(
+          (_user: IPeople) => _user.secondaryText == user.secondaryText
+        )
+    ).map((user_: IPeople) => user_.secondaryText);
+    let _status: string = _valueObj.Obj.Status;
+
+    if (_valueObj.Obj.ApprovedMembers.length > 0 && _pendingUsers.length == 0) {
+      _status = "Completed";
+    } else if (
+      _valueObj.Obj.ApprovedMembers.length > 0 &&
+      _pendingUsers.length > 0
+    ) {
+      _status = "In Progress";
+    } else {
+      _status = "Pending";
+    }
+
+    console.log(_valueObj);
+
+    console.log(_valueObj.Obj.ApprovedMembers);
+    console.log(_pendingUsers);
+
+    console.log(
+      _valueObj.Obj.ApprovedMembers.length > 0 || _pendingUsers.length > 0
+    );
+
+    if (_valueObj.Obj.ApprovedMembers.length > 0 || _pendingUsers.length > 0) {
+      let responseData = {
+        Comments: _valueObj.Comments.trim(),
+        Excluded: _excludedUsers.join(";"),
+        NotAcknowledgedEmails: _pendingUsers.join(";"),
+        Status: _status,
+      };
+
+      sp.web.lists
+        .getByTitle(HRDocName)
+        .items.getById(_valueObj.Id)
+        .update(responseData)
+        .then(() => {
+          setValueObj(getDataObj);
+          setHideModal(false);
+          setOnSubmitLoader(false);
+          init();
+        })
+        .catch((error) => {
+          errorFunction("updateFile", error);
+        });
+    } else {
+      _valueObj.Valid = "* Please Valid Signatories";
+      setValueObj({ ..._valueObj });
+      setOnSubmitLoader(false);
+    }
   };
 
   const emailReturnFunction = (
     userArr: any[],
     excludedUsers: any[]
-  ): string => {
+  ): string[] => {
     let _pendingApprovers: string[] = [];
 
     if (userArr.length > 0) {
@@ -1405,15 +1534,14 @@ const Dashboard = (props: IProps): JSX.Element => {
           // _pendingApprovers = _pendingApprovers.filter(
           //   (user) => user != loggedUserEmail
           // );
-          return _pendingApprovers.join(";");
+          return _pendingApprovers;
         }
       }
     } else {
-      return "";
+      return [];
     }
   };
 
-  // delete function
   const deleteFunction = (val): void => {
     sp.web.lists
       .getByTitle(HRDocName)
@@ -1447,7 +1575,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     });
 
     const newData = copyAndSort(
-      sortData,
+      sortFilteredData,
       currCol.fieldName!,
       currCol.isSortedDescending
     );
@@ -1509,6 +1637,18 @@ const Dashboard = (props: IProps): JSX.Element => {
   const GetUserDetailsAzureUsers = (filterText: any, currentPersonas) => {
     let _allPeoples = props.azureUsers;
 
+    if (valueObj.type == "edit") {
+      _allPeoples = _allPeoples.filter(
+        (_people) =>
+          !valueObj.Obj.ApprovedMembers.some(
+            (user) => user.secondaryText == _people.secondaryText
+          ) &&
+          !valueObj.Excluded.some(
+            (user) => user.secondaryText == _people.secondaryText
+          )
+      );
+    }
+
     if (currentPersonas.length > 0) {
       _allPeoples = _allPeoples.filter(
         (_people) =>
@@ -1535,15 +1675,12 @@ const Dashboard = (props: IProps): JSX.Element => {
     return date ? moment(date).format("DD/MM/YYYY") : "";
   };
 
-  // reset function
-  function reset() {
-    setdisplayData(masterData);
-    setFilterKeys(filterKeys);
+  const reset = (): void => {
+    setMasterData([...sortData]);
     setColumns(_columns);
-    paginateFunction(1, masterData);
-  }
+    filterFunction(sortData, filterKeys);
+  };
 
-  // Pagination function
   const paginateFunction = (pagenumber: number, data: any[]) => {
     if (data.length > 0) {
       let lastIndex: number = pagenumber * totalPageItems;
@@ -1558,12 +1695,12 @@ const Dashboard = (props: IProps): JSX.Element => {
   };
 
   // error handling
-  function errorFunction(msg: string, error: any): void {
+  const errorFunction = (msg: string, error: any): void => {
     console.log(msg, error);
     alertify.set("notifier", "position", "top-right");
     alertify.error("Something when error, please contact system admin.");
     resetAllFunction();
-  }
+  };
 
   const resetAllFunction = (): void => {
     setAcknowledgePopup({
@@ -1772,12 +1909,55 @@ const Dashboard = (props: IProps): JSX.Element => {
       )
       .catch((err) => console.log("Error writing excel export", err));
   };
+  const generateExcelComments = (_data: any, title: string): void => {
+    const workbook = new Excel.Workbook();
+    const worksheet = workbook.addWorksheet("My Sheet");
+    worksheet.columns = [
+      { header: "User Name", key: "UserName", width: 30 }, // A
+      { header: "Comments", key: "Comments", width: 30 }, // B
+      { header: "Submitted On", key: "Created", width: 30 }, // C
+      { header: "Created By", key: "CreatedBy", width: 30 }, // D
+    ];
+    _data.forEach((item: any) => {
+      worksheet.addRow({
+        UserName: item.UserName ? item.UserName : "",
+        Comments: item.Comments ? item.Comments : "",
+        Created: item.Created ? moment(item.Created).format("DD/MM/YYYY") : "",
+        CreatedBy: item.AuthorId ? item.Author.Title : "",
+      });
+    });
+    ["A1", "B1", "C1", "D1"].map((key) => {
+      worksheet.getCell(key).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "ff5e14" },
+      };
+    });
+    ["A1", "B1", "C1", "D1"].map((key) => {
+      worksheet.getCell(key).color = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "ffffff" },
+      };
+    });
+    workbook.xlsx
+      .writeBuffer()
+      .then((buffer) =>
+        FileSaver.saveAs(
+          new Blob([buffer]),
+          `HR-${title}-Comments-${moment().format("DD/MM/YYYY")}.xlsx`
+        )
+      )
+      .catch((err) =>
+        console.log("Error writing excel export - Comments", err)
+      );
+  };
 
-  const init = (): void => {
+  const init = (fileName?: string): void => {
     settableLoader(true);
 
     if (HRDocName || HRCommentsName) {
-      getManagers();
+      getManagers(fileName);
     } else {
       errorFunction(
         "Invalid Document Library or List",
@@ -1786,9 +1966,21 @@ const Dashboard = (props: IProps): JSX.Element => {
     }
   };
 
+  // const clearCacheData = () => {
+  //   caches.keys().then((names) => {
+  //     names.forEach((name) => {
+  //       caches.delete(name);
+  //     });
+  //   });
+  // };
+
   // useEffect
   useEffect(() => {
-    init();
+    const urlParams = new URLSearchParams(window.location.search);
+    const fileName: string = urlParams.get("Title");
+
+    // clearCacheData();
+    init(fileName);
   }, []);
 
   return (
@@ -1816,7 +2008,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       styles={searchStyle}
                       value={FilterKeys.Title}
                       onChange={(e, text) => {
-                        filterFunction("Title", text);
+                        filterOnChangeHandler("Title", text);
                       }}
                     />
                   </div>
@@ -1827,7 +2019,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       styles={searchStyle}
                       value={FilterKeys.Uploader}
                       onChange={(e, text) => {
-                        filterFunction("Uploader", text);
+                        filterOnChangeHandler("Uploader", text);
                       }}
                     />
                   </div>
@@ -1839,7 +2031,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       formatDate={dateformater}
                       value={FilterKeys.submittedDate}
                       onSelectDate={(date) => {
-                        filterFunction("submittedDate", date);
+                        filterOnChangeHandler("submittedDate", date);
                       }}
                     />
                   </div>
@@ -1850,7 +2042,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       styles={dropdownStyles}
                       selectedKey={FilterKeys.Status}
                       onChange={(e, option) => {
-                        filterFunction("Status", option["text"]);
+                        filterOnChangeHandler("Status", option["text"]);
                       }}
                     />
                   </div>
@@ -1861,7 +2053,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       styles={searchStyle}
                       value={FilterKeys.Approvers}
                       onChange={(e, text) => {
-                        filterFunction("Approvers", text);
+                        filterOnChangeHandler("Approvers", text);
                       }}
                     />
                   </div>
@@ -1876,7 +2068,17 @@ const Dashboard = (props: IProps): JSX.Element => {
                       styles={dropdownStyles}
                       selectedKey={FilterKeys.View}
                       onChange={(e, option: IDropDown) => {
-                        filterFunction("View", option["key"]);
+                        filterOnChangeHandler("View", option["key"]);
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginRight: 10 }}>
+                    <Label>Show All</Label>
+                    <Toggle
+                      styles={toggleStyles}
+                      checked={FilterKeys.ShowAll}
+                      onChange={(e) => {
+                        filterOnChangeHandler("ShowAll", !FilterKeys.ShowAll);
                       }}
                     />
                   </div>
@@ -1893,7 +2095,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                 </div>
                 {/* filter section ends */}
 
-                <div style={{ display: "flex" }}>
+                <div style={{ display: "flex", marginTop: 28 }}>
                   <div>
                     <Label
                       onClick={() => {
@@ -1911,7 +2113,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                         borderRadius: "3px",
                         color: "#1D6F42",
                         marginRight: 10,
-                        marginTop: 15,
+                        // marginTop: 15,
                       }}
                     >
                       <Icon
@@ -1949,6 +2151,34 @@ const Dashboard = (props: IProps): JSX.Element => {
                 items={paginatedData}
                 styles={listStyles}
                 selectionMode={SelectionMode.none}
+                onRenderRow={(data, defaultRender) => {
+                  return (
+                    <div>
+                      {defaultRender({
+                        ...data,
+
+                        styles: {
+                          root: {
+                            background:
+                              FilterKeys.ShowAll && data.item.Expired == false
+                                ? "#f5e3e3"
+                                : "#fff",
+
+                            selectors: {
+                              "&:hover": {
+                                background:
+                                  FilterKeys.ShowAll &&
+                                  data.item.Expired == false
+                                    ? "#ffc4c4"
+                                    : "#f3f2f1",
+                              },
+                            },
+                          },
+                        },
+                      })}
+                    </div>
+                  );
+                }}
               />
               {displayData.length > 0 ? (
                 <>
@@ -1985,18 +2215,67 @@ const Dashboard = (props: IProps): JSX.Element => {
           {showModal ? (
             <Modal styles={modalStyle} isOpen={showModal}>
               <div className={styles.modalCustomDesign}>
-                <div className={styles.header}>
-                  {valueObj.type == "new" ? (
-                    <h2>New Document</h2>
-                  ) : valueObj.type == "edit" ? (
-                    <h2>Edit Document</h2>
-                  ) : (
-                    <h2>View Document</h2>
-                  )}
+                <div
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "space-around",
+                    alignItems: "center",
+                  }}
+                >
+                  {valueObj.type == "view" &&
+                    valueObj.Obj.Status != "Pending" && (
+                      <div style={{ width: "30%" }}></div>
+                    )}
+                  <div
+                    className={styles.header}
+                    style={{ width: valueObj.type != "view" ? "100%" : "70%" }}
+                  >
+                    {valueObj.type == "new" ? (
+                      <h2>New Document</h2>
+                    ) : valueObj.type == "edit" ? (
+                      <h2>Edit Document</h2>
+                    ) : (
+                      <h2>View Document</h2>
+                    )}
+                  </div>
+                  {valueObj.type == "view" &&
+                    valueObj.Obj.Status != "Pending" && (
+                      <div style={{ width: "30%" }}>
+                        <Label
+                          onClick={() => {
+                            getComments(valueObj.Obj.ID, valueObj.Title);
+                          }}
+                          style={{
+                            width: "max-content",
+                            backgroundColor: "#EBEBEB",
+                            padding: "7px 15px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "3px",
+                            color: "#1D6F42",
+                            marginLeft: 13,
+                          }}
+                        >
+                          <Icon
+                            style={{
+                              color: "#1D6F42",
+                            }}
+                            iconName="ExcelDocument"
+                            className={iconStyleClass.export}
+                          />
+                          Export as XLS
+                        </Label>
+                      </div>
+                    )}
                 </div>
 
                 {/* details section */}
                 {/* title */}
+
                 <div>
                   <div
                     className={styles.detailsSection}
@@ -2061,7 +2340,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                         />
                       </div>
                     ) : (
-                      <div style={{ width: 290, margin: "0 10px" }}>
+                      <div style={{ width: "100%", margin: "0 10px" }}>
                         <Label
                           styles={{
                             root: {
@@ -2140,7 +2419,11 @@ const Dashboard = (props: IProps): JSX.Element => {
                           ? peoplePickerDisabledStyle
                           : peoplePickerStyle
                       }
-                      onResolveSuggestions={GetUserDetailsUserOnly}
+                      onResolveSuggestions={
+                        valueObj.type == "new"
+                          ? GetUserDetailsUserOnly
+                          : GetUserDetailsAzureUsers
+                      }
                       itemLimit={10}
                       disabled={valueObj.type == "view"}
                       selectedItems={valueObj.Excluded}
@@ -2165,7 +2448,7 @@ const Dashboard = (props: IProps): JSX.Element => {
                       onChange={(name) => {
                         Onchangehandler("Comments", name.target["value"]);
                       }}
-                    ></TextField>
+                    />
                   </div>
                 </div>
 
