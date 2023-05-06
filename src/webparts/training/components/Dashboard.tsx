@@ -2095,11 +2095,11 @@ const Dashboard = (props: IProps): JSX.Element => {
     const workbook = new Excel.Workbook();
     const worksheet = workbook.addWorksheet("My Sheet");
     worksheet.columns = [
-      { header: "User Name", key: "UserName", width: 30 }, // A
+      { header: "Type your Full Name", key: "UserName", width: 50 }, // A
       { header: "Acknowledgement Type", key: "AcknowledgementType", width: 30 }, // B
       { header: "Comments", key: "Comments", width: 30 }, // C
-      { header: "Submitted On", key: "Created", width: 30 }, // D
-      { header: "Created By", key: "CreatedBy", width: 30 }, // E
+      { header: "Acknowleged On", key: "Created", width: 30 }, // D
+      { header: "Acknowleged By", key: "CreatedBy", width: 30 }, // E
     ];
     _data.forEach((item: any) => {
       worksheet.addRow({

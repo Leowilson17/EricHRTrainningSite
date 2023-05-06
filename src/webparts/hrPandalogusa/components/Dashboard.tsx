@@ -958,7 +958,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     ],
     editIcon: [
       {
-        color: "#36b0ff",
+        color: "#000",
         cursor: "pointer",
       },
       iconStyle,
@@ -1913,10 +1913,10 @@ const Dashboard = (props: IProps): JSX.Element => {
     const workbook = new Excel.Workbook();
     const worksheet = workbook.addWorksheet("My Sheet");
     worksheet.columns = [
-      { header: "User Name", key: "UserName", width: 30 }, // A
+      { header: "Type your Full Name", key: "UserName", width: 50 }, // A
       { header: "Comments", key: "Comments", width: 30 }, // B
-      { header: "Submitted On", key: "Created", width: 30 }, // C
-      { header: "Created By", key: "CreatedBy", width: 30 }, // D
+      { header: "Acknowleged On", key: "Created", width: 30 }, // C
+      { header: "Acknowleged By", key: "CreatedBy", width: 30 }, // D
     ];
     _data.forEach((item: any) => {
       worksheet.addRow({
