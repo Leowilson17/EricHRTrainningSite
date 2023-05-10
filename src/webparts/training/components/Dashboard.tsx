@@ -1264,6 +1264,7 @@ const Dashboard = (props: IProps): JSX.Element => {
   ): void => {
     if (_filterKeys.Title) {
       _masterData = _masterData.filter((arr) =>
+      arr.DocTitle &&
         arr.DocTitle.toLowerCase().includes(_filterKeys.Title.toLowerCase())
       );
     }
@@ -1281,6 +1282,7 @@ const Dashboard = (props: IProps): JSX.Element => {
     if (_filterKeys.Approvers) {
       _masterData = _masterData.filter((arr) => {
         return arr.Signatories.some((app) =>
+        app.text &&
           app.text.toLowerCase().includes(_filterKeys.Approvers.toLowerCase())
         );
       });
