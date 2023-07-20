@@ -1045,6 +1045,8 @@ const Dashboard = (props: IProps): JSX.Element => {
       .getByTitle(DocName)
       .items.select("*,Author/Title,Author/EMail")
       .expand("Author,File")
+      .top(5000)
+      .orderBy("Modified", false)
       .get()
       .then((value: any[]) => {
         value.forEach((data) => {
@@ -1263,9 +1265,10 @@ const Dashboard = (props: IProps): JSX.Element => {
     _filterKeys: IFilters
   ): void => {
     if (_filterKeys.Title) {
-      _masterData = _masterData.filter((arr) =>
-      arr.DocTitle &&
-        arr.DocTitle.toLowerCase().includes(_filterKeys.Title.toLowerCase())
+      _masterData = _masterData.filter(
+        (arr) =>
+          arr.DocTitle &&
+          arr.DocTitle.toLowerCase().includes(_filterKeys.Title.toLowerCase())
       );
     }
     if (_filterKeys.Department != "All") {
@@ -1281,9 +1284,10 @@ const Dashboard = (props: IProps): JSX.Element => {
     }
     if (_filterKeys.Approvers) {
       _masterData = _masterData.filter((arr) => {
-        return arr.Signatories.some((app) =>
-        app.text &&
-          app.text.toLowerCase().includes(_filterKeys.Approvers.toLowerCase())
+        return arr.Signatories.some(
+          (app) =>
+            app.text &&
+            app.text.toLowerCase().includes(_filterKeys.Approvers.toLowerCase())
         );
       });
     }
@@ -1435,7 +1439,7 @@ const Dashboard = (props: IProps): JSX.Element => {
         isError = true;
         _valueObj.Valid = "* Please Choose File";
       } else if (
-        _valueObj.Department.length == 0 &&
+        // _valueObj.Department.length == 0 &&
         _valueObj.Mail.length == 0
       ) {
         isError = true;
@@ -1499,27 +1503,32 @@ const Dashboard = (props: IProps): JSX.Element => {
       (people) => people.secondaryText
     );
 
-    let validUsers: IPeople[] = [];
+    // let validUsers: IPeople[] = [];
 
-    // for (let vUsers of [...filterdDeptUsers, ...updateData.Mail]) {
-    for (let vUsers of [...updateData.Mail]) {
-      if (
-        !validUsers.some((user) => user.secondaryText == vUsers.secondaryText)
-      ) {
-        validUsers.push(vUsers);
-      }
-    }
+    // // for (let vUsers of [...filterdDeptUsers, ...updateData.Mail]) {
+    // for (let vUsers of [...updateData.Mail]) {
+    //   if (
+    //     !validUsers.some((user) => user.secondaryText == vUsers.secondaryText)
+    //   ) {
+    //     validUsers.push(vUsers);
+    //   }
+    // }
 
-    let pendingApprovers: any = (
-      updateData.Excluded.length > 0
-        ? validUsers.filter(
-            (people) =>
-              !updateData.Excluded.some(
-                (exc) => exc.secondaryText == people.secondaryText
-              )
-          )
-        : validUsers
-    ).map((pending) => pending.secondaryText);
+    // let pendingApprovers: string[] = (
+    //   updateData.Excluded.length > 0
+    //     ? validUsers.filter(
+    //         (people) =>
+    //           !updateData.Excluded.some(
+    //             (exc) => exc.secondaryText == people.secondaryText
+    //           )
+    //       )
+    //     : validUsers
+    // ).map((pending) => pending.secondaryText);
+
+    let pendingApprovers: string[] = emailReturnFunction(
+      _valueObj.Mail,
+      _valueObj.Excluded
+    );
 
     if (pendingApprovers.length > 0) {
       let responseData = {
@@ -1621,12 +1630,20 @@ const Dashboard = (props: IProps): JSX.Element => {
       FileStatus = "Pending";
     }
 
-    if (AcknowledgedQuiz.length > 0 && NotAcknowledgedQuiz.length > 0) {
-      QuizStatus = "In Progress";
-    } else if (AcknowledgedQuiz.length > 0 && NotAcknowledgedQuiz.length == 0) {
-      QuizStatus = "Completed";
-    } else if (AcknowledgedQuiz.length == 0 && NotAcknowledgedQuiz.length > 0) {
-      QuizStatus = "Pending";
+    if (_valueObj.Quiz) {
+      if (AcknowledgedQuiz.length > 0 && NotAcknowledgedQuiz.length > 0) {
+        QuizStatus = "In Progress";
+      } else if (
+        AcknowledgedQuiz.length > 0 &&
+        NotAcknowledgedQuiz.length == 0
+      ) {
+        QuizStatus = "Completed";
+      } else if (
+        AcknowledgedQuiz.length == 0 &&
+        NotAcknowledgedQuiz.length > 0
+      ) {
+        QuizStatus = "Pending";
+      }
     }
 
     if (
@@ -1660,6 +1677,48 @@ const Dashboard = (props: IProps): JSX.Element => {
       _valueObj.Valid = "* Please Select Valid Users";
       setValueObj({ ..._valueObj });
       setOnSubmitLoader(false);
+    }
+  };
+
+  const emailReturnFunction = (
+    userArr: any[],
+    excludedUsers: any[]
+  ): string[] => {
+    let _pendingApprovers: string[] = [];
+
+    if (userArr.length > 0) {
+      for (let i = 0; i < userArr.length; i++) {
+        if (userArr[i].isGroup == false) {
+          _pendingApprovers.push(userArr[i].secondaryText);
+        } else {
+          let targetAzureGroup = props.azureGroups.filter(
+            (ad) => ad.groupName == userArr[i].text
+          );
+          if (targetAzureGroup.length > 0 && targetAzureGroup[0].groupID) {
+            targetAzureGroup[0].groupMembers.forEach((user) => {
+              if (user.userPrincipalName) {
+                _pendingApprovers.push(user.userPrincipalName);
+              }
+            });
+          }
+        }
+
+        if (i == userArr.length - 1) {
+          _pendingApprovers = _pendingApprovers.filter(
+            (item, index) => _pendingApprovers.indexOf(item) === index
+          );
+          _pendingApprovers = _pendingApprovers.filter(
+            (mail: string) =>
+              !excludedUsers.some((exclude) => exclude.secondaryText == mail)
+          );
+          // _pendingApprovers = _pendingApprovers.filter(
+          //   (user) => user != loggedUserEmail
+          // );
+          return _pendingApprovers;
+        }
+      }
+    } else {
+      return [];
     }
   };
 
@@ -1716,6 +1775,42 @@ const Dashboard = (props: IProps): JSX.Element => {
         (isSortedDescending ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1
       );
   }
+
+  const GetUserDetails = (filterText: any, currentPersonas) => {
+    let _allPeoples = allPeoples;
+
+    if (currentPersonas.length > 0) {
+      _allPeoples = _allPeoples.filter(
+        (_people) =>
+          !currentPersonas.some((persona) => persona.ID == _people.ID)
+      );
+    }
+    var result = _allPeoples.filter(
+      (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
+    );
+
+    return result.filter((item) =>
+      doesTextStartWith(item.text as string, filterText)
+    );
+  };
+
+  const GetUserDetailsUserOnly = (filterText: any, currentPersonas) => {
+    let _allPeoples = allPeoples.filter((user) => !user.isGroup);
+
+    if (currentPersonas.length > 0) {
+      _allPeoples = _allPeoples.filter(
+        (_people) =>
+          !currentPersonas.some((persona) => persona.ID == _people.ID)
+      );
+    }
+    var result = _allPeoples.filter(
+      (value, index, self) => index === self.findIndex((t) => t.ID === value.ID)
+    );
+
+    return result.filter((item) =>
+      doesTextStartWith(item.text as string, filterText)
+    );
+  };
 
   const GetUserDetailsAzureUsers = (
     filterText: string,
@@ -2527,10 +2622,11 @@ const Dashboard = (props: IProps): JSX.Element => {
                   <div className={styles.detailsSection}>
                     <div>
                       <Label>
-                        Include{" "}
-                        {valueObj.Department.length == 0 ? (
+                        {/* Include{" "} */}
+                        {/* {valueObj.Department.length == 0 ? (
                           <span style={{ color: "red" }}>*</span>
-                        ) : null}
+                        ) : null} */}
+                        Signatories <span style={{ color: "red" }}>*</span>
                       </Label>
                     </div>
 
@@ -2538,7 +2634,12 @@ const Dashboard = (props: IProps): JSX.Element => {
 
                     <NormalPeoplePicker
                       styles={peoplePickerStyle}
-                      onResolveSuggestions={GetUserDetailsAzureUsers}
+                      onResolveSuggestions={
+                        valueObj.type == "new"
+                          ? GetUserDetails
+                          : GetUserDetailsAzureUsers
+                      }
+                      // onResolveSuggestions={GetUserDetailsAzureUsers}
                       itemLimit={1000}
                       selectedItems={valueObj.Mail}
                       onChange={(selectedUser) => {
@@ -2547,44 +2648,26 @@ const Dashboard = (props: IProps): JSX.Element => {
                     />
                   </div>
 
-                  {valueObj.type == "edit" && (
-                    <div className={styles.detailsSection}>
-                      <div>
-                        <Label>Excluded</Label>
-                      </div>
-                      <div>:</div>
-                      <NormalPeoplePicker
-                        // styles={peoplePickerDisabledStyle}
-                        styles={peoplePickerStyle}
-                        onResolveSuggestions={GetUserDetailsAzureUsers}
-                        itemLimit={10000}
-                        // disabled={true}
-                        selectedItems={valueObj.Excluded}
-                        onChange={(selectedUser) => {
-                          Onchangehandler("Excluded", selectedUser);
-                        }}
-                      />
+                  <div className={styles.detailsSection}>
+                    <div>
+                      <Label>Excluded</Label>
                     </div>
-                  )}
-
-                  {/* people picker */}
-                  {valueObj.type == "new" && (
-                    <div className={styles.detailsSection}>
-                      <div>
-                        <Label>Excluded</Label>
-                      </div>
-                      <div>:</div>
-                      <NormalPeoplePicker
-                        styles={peoplePickerStyle}
-                        onResolveSuggestions={GetUserDetailsAzureUsers}
-                        itemLimit={500}
-                        selectedItems={valueObj.Excluded}
-                        onChange={(selectedUser) => {
-                          Onchangehandler("Excluded", selectedUser);
-                        }}
-                      />
-                    </div>
-                  )}
+                    <div>:</div>
+                    <NormalPeoplePicker
+                      styles={peoplePickerStyle}
+                      onResolveSuggestions={
+                        valueObj.type == "new"
+                          ? GetUserDetailsUserOnly
+                          : GetUserDetailsAzureUsers
+                      }
+                      // onResolveSuggestions={GetUserDetailsAzureUsers}
+                      itemLimit={500}
+                      selectedItems={valueObj.Excluded}
+                      onChange={(selectedUser) => {
+                        Onchangehandler("Excluded", selectedUser);
+                      }}
+                    />
+                  </div>
 
                   {/* Quiz Section */}
                   <div
@@ -2596,14 +2679,21 @@ const Dashboard = (props: IProps): JSX.Element => {
                     </div>
                     <div style={{ width: 0 }}>:</div>
                     {valueObj.type == "edit" ? (
-                      <Label style={{ width: "auto", marginLeft: 13 }}>
-                        <a
-                          href={valueObj.Quiz}
-                          target="_blank"
-                          data-interception="off"
-                        >
-                          {valueObj.Quiz}
-                        </a>
+                      <Label
+                        title={valueObj.Quiz ? valueObj.Quiz : "No Quiz"}
+                        style={{ width: "auto", marginLeft: 13 }}
+                      >
+                        {valueObj.Quiz ? (
+                          <a
+                            href={valueObj.Quiz}
+                            target="_blank"
+                            data-interception="off"
+                          >
+                            {valueObj.Quiz}
+                          </a>
+                        ) : (
+                          "N/A"
+                        )}
                       </Label>
                     ) : (
                       <TextField
