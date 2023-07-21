@@ -1998,7 +1998,7 @@ const Dashboard = (props: IProps): JSX.Element => {
             <div>
               {/* header section starts */}
               {/* <Label className={styles.header}>HR Documents</Label> */}
-              <Label className={styles.header}>HR Policies & Procedures</Label>
+              <Label className={styles.header}>HR Policies</Label>
               {/* header section ends */}
 
               {/* filter section stars */}
