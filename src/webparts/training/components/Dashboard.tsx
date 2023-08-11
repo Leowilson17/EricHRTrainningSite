@@ -84,6 +84,7 @@ interface IProps {
   deptDropdown: IDropDown[];
   docLibName: string;
   commentsListName: string;
+  errorLogListName: string;
 }
 
 interface IAzureGroups {
@@ -1214,7 +1215,7 @@ const Dashboard = (props: IProps): JSX.Element => {
         settableLoader(false);
       })
       .catch((error) => {
-        errorFunction("getDatafromLibrary", error);
+        errorFunction(error, "getDatafromLibrary");
       });
   };
 
@@ -1571,7 +1572,7 @@ const Dashboard = (props: IProps): JSX.Element => {
           });
         })
         .catch((error) => {
-          errorFunction("addFile", error);
+          errorFunction(error, "addFile");
         });
     } else {
       _valueObj.Valid = "* Please Select Valid Users";
@@ -1657,7 +1658,7 @@ const Dashboard = (props: IProps): JSX.Element => {
           ? NotAcknowledgedQuiz.join(";").trim()
           : "",
         Comments: valueObj.Comments,
-        Status: FileStatus,
+        Status1: FileStatus,
         QuizStatus: QuizStatus,
       };
 
@@ -1671,7 +1672,7 @@ const Dashboard = (props: IProps): JSX.Element => {
           init();
         })
         .catch((error) => {
-          errorFunction("updateFile", error);
+          errorFunction(error, "updateFile");
         });
     } else {
       _valueObj.Valid = "* Please Select Valid Users";
@@ -1731,6 +1732,9 @@ const Dashboard = (props: IProps): JSX.Element => {
         setHideDelModal({ condition: false, targetID: null });
         setOnSubmitLoader(false);
         init();
+      })
+      .catch((error) => {
+        errorFunction(error, "deleteFunction");
       });
   };
 
@@ -1875,7 +1879,20 @@ const Dashboard = (props: IProps): JSX.Element => {
     alertify.set("notifier", "position", "top-right");
     alertify.error("Something when error, please contact system admin.");
     setOnSubmitLoader(false);
-    resetAllFunction();
+    errorHandlingFunction(msg, error);
+  };
+
+  const errorHandlingFunction = (msg: any, func: string): void => {
+    sp.web.lists
+      .getByTitle(props.errorLogListName)
+      .items.add({
+        Title: "Training",
+        FunctionName: `Dashboard - ${func}`,
+        ErrorMessage: JSON.stringify(msg["message"]),
+      })
+      .then(() => {
+        resetAllFunction();
+      });
   };
 
   const reset = (): void => {
