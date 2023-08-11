@@ -6,6 +6,8 @@ import { graph } from "@pnp/graph";
 import "@pnp/graph/users";
 import "@pnp/graph/groups";
 import { Spinner, SpinnerSize } from "@fluentui/react";
+import alertify from "alertifyjs";
+import "alertifyjs/build/css/alertify.css";
 
 interface IProps {
   spcontext: any;
@@ -32,6 +34,8 @@ interface IAzureGroups {
 }
 
 const Maincomponent = (props: IProps): JSX.Element => {
+  const errorListName: string = "ErrorLog";
+
   const [ADGroups, setADGroups] = React.useState<IAzureGroups[]>([]);
   const [ADUsers, setADUsers] = React.useState<IUsers[]>([]);
   const [SiteUsers, setSiteUsers] = React.useState<IUsers[]>([]);
@@ -89,7 +93,7 @@ const Maincomponent = (props: IProps): JSX.Element => {
         getAllADGroups(_ADUsers);
       })
       .catch((error) => {
-        console.log(error, "getAllADUsers");
+        errorFunction(error, "getAllADUsers");
       });
   };
   const getAllADGroups = (ADUsers: IUsers[]) => {
@@ -111,7 +115,7 @@ const Maincomponent = (props: IProps): JSX.Element => {
         getAllUsers(ADUsers);
       })
       .catch((error) => {
-        console.log(error, "getAllADGroups");
+        errorFunction(error, "getAllADGroups");
       });
   };
   const getAllUsers = (ADUsers: IUsers[]) => {
@@ -152,7 +156,27 @@ const Maincomponent = (props: IProps): JSX.Element => {
         setLoader(false);
       })
       .catch((error) => {
-        console.log(error, "getAllUsers");
+        errorFunction(error, "getAllUsers");
+      });
+  };
+
+  const errorFunction = (msg: any, func: string): void => {
+    alertify.set("notifier", "position", "top-right");
+    alertify.error("Something when error, please contact system admin.");
+
+    errorHandlingFunction(msg, func);
+  };
+
+  const errorHandlingFunction = (msg: any, func: string): void => {
+    sp.web.lists
+      .getByTitle(errorListName)
+      .items.add({
+        Title: "Training",
+        FunctionName: `MainComponent - ${func}`,
+        ErrorMessage: JSON.stringify(msg["message"]),
+      })
+      .then(() => {
+        setLoader(false);
       });
   };
 
@@ -173,6 +197,7 @@ const Maincomponent = (props: IProps): JSX.Element => {
       deptDropdown={allDepts}
       docLibName={props.docLibName}
       commentsListName={props.commentsListName}
+      errorLogListName={errorListName}
     />
   );
 };

@@ -6,6 +6,8 @@ import { graph } from "@pnp/graph";
 import "@pnp/graph/users";
 import "@pnp/graph/groups";
 import { Spinner, SpinnerSize } from "@fluentui/react";
+import alertify from "alertifyjs";
+import "alertifyjs/build/css/alertify.css";
 
 interface IProps {
   spcontext: any;
@@ -31,6 +33,8 @@ interface IAzureGroups {
 }
 
 const Maincomponent = (props: IProps): JSX.Element => {
+  const errorListName: string = "ErrorLog";
+
   const [ADGroups, setADGroups] = React.useState<IAzureGroups[]>([]);
   const [ADUsers, setADUsers] = React.useState<IUsers[]>([]);
   const [SiteUsers, setSiteUsers] = React.useState<IUsers[]>([]);
@@ -64,7 +68,7 @@ const Maincomponent = (props: IProps): JSX.Element => {
         getAllADGroups();
       })
       .catch((error) => {
-        console.log(error, "getAllADUsers");
+        errorFunction(error, "getAllADUsers");
       });
   };
   const getAllADGroups = () => {
@@ -86,7 +90,7 @@ const Maincomponent = (props: IProps): JSX.Element => {
         getAllUsers();
       })
       .catch((error) => {
-        console.log(error, "getAllADGroups");
+        errorFunction(error, "getAllADGroups");
       });
   };
   const getAllUsers = () => {
@@ -114,11 +118,32 @@ const Maincomponent = (props: IProps): JSX.Element => {
         setLoader(false);
       })
       .catch((error) => {
-        console.log(error, "getAllUsers");
+        errorFunction(error, "getAllUsers");
+      });
+  };
+
+  const errorFunction = (msg: any, func: string): void => {
+    alertify.set("notifier", "position", "top-right");
+    alertify.error("Something when error, please contact system admin.");
+
+    errorHandlingFunction(msg, func);
+  };
+
+  const errorHandlingFunction = (msg: any, func: string): void => {
+    sp.web.lists
+      .getByTitle(errorListName)
+      .items.add({
+        Title: "HR",
+        FunctionName: `MainComponent - ${func}`,
+        ErrorMessage: JSON.stringify(msg["message"]),
+      })
+      .then(() => {
+        setLoader(false);
       });
   };
 
   useEffect(() => {
+    setLoader(true);
     getAllADUsers();
   }, []);
 
@@ -133,6 +158,7 @@ const Maincomponent = (props: IProps): JSX.Element => {
       graphContext={props.graphContext}
       docLibName={props.docLibName}
       commentsListName={props.commentsListName}
+      errorLogListName={errorListName}
     />
   );
 };

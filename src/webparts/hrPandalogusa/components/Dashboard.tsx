@@ -84,6 +84,7 @@ interface IProps {
   graphContext: any;
   docLibName: string;
   commentsListName: string;
+  errorLogListName: string;
 }
 
 interface IAzureGroups {
@@ -1184,7 +1185,7 @@ const Dashboard = (props: IProps): JSX.Element => {
         settableLoader(false);
       })
       .catch((error) => {
-        errorFunction("getDatafromLibrary", error);
+        errorFunction(error, "getDatafromLibrary");
       });
   };
 
@@ -1242,17 +1243,18 @@ const Dashboard = (props: IProps): JSX.Element => {
       });
     }
     if (_filterKeys.Title) {
-
-      _masterData = _masterData.filter((arr) =>
-      arr.DocTitle &&
-        arr.DocTitle.toLowerCase().includes(_filterKeys.Title.toLowerCase())
+      _masterData = _masterData.filter(
+        (arr) =>
+          arr.DocTitle &&
+          arr.DocTitle.toLowerCase().includes(_filterKeys.Title.toLowerCase())
       );
     }
     if (_filterKeys.Approvers) {
       _masterData = _masterData.filter((arr) => {
-        return arr.Signatories.some((app) =>
-        app.text &&
-          app.text.toLowerCase().includes(_filterKeys.Approvers.toLowerCase())
+        return arr.Signatories.some(
+          (app) =>
+            app.text &&
+            app.text.toLowerCase().includes(_filterKeys.Approvers.toLowerCase())
         );
       });
     }
@@ -1434,7 +1436,7 @@ const Dashboard = (props: IProps): JSX.Element => {
           });
         })
         .catch((error) => {
-          errorFunction("addFile", error);
+          errorFunction(error, "addFile");
         });
     } else {
       _valueObj.Valid = "* Please Valid Signatories";
@@ -1466,15 +1468,6 @@ const Dashboard = (props: IProps): JSX.Element => {
       _status = "Pending";
     }
 
-    console.log(_valueObj);
-
-    console.log(_valueObj.Obj.ApprovedMembers);
-    console.log(_pendingUsers);
-
-    console.log(
-      _valueObj.Obj.ApprovedMembers.length > 0 || _pendingUsers.length > 0
-    );
-
     if (_valueObj.Obj.ApprovedMembers.length > 0 || _pendingUsers.length > 0) {
       let responseData = {
         Comments: _valueObj.Comments.trim(),
@@ -1494,7 +1487,7 @@ const Dashboard = (props: IProps): JSX.Element => {
           init();
         })
         .catch((error) => {
-          errorFunction("updateFile", error);
+          errorFunction(error, "updateFile");
         });
     } else {
       _valueObj.Valid = "* Please Valid Signatories";
@@ -1554,6 +1547,9 @@ const Dashboard = (props: IProps): JSX.Element => {
         setHideDelModal({ condition: false, targetID: null });
         setOnSubmitLoader(false);
         init();
+      })
+      .catch((error) => {
+        errorFunction(error, "deleteFunction");
       });
   };
 
@@ -1698,11 +1694,24 @@ const Dashboard = (props: IProps): JSX.Element => {
   };
 
   // error handling
-  const errorFunction = (msg: string, error: any): void => {
-    console.log(msg, error);
+  const errorFunction = (msg: string, func: any): void => {
+    console.log(msg, func);
     alertify.set("notifier", "position", "top-right");
     alertify.error("Something when error, please contact system admin.");
-    resetAllFunction();
+    errorHandlingFunction(msg, func);
+  };
+
+  const errorHandlingFunction = (msg: any, func: string): void => {
+    sp.web.lists
+      .getByTitle(props.errorLogListName)
+      .items.add({
+        Title: "HR",
+        FunctionName: `Dashboard - ${func}`,
+        ErrorMessage: JSON.stringify(msg["message"]),
+      })
+      .then(() => {
+        resetAllFunction();
+      });
   };
 
   const resetAllFunction = (): void => {
