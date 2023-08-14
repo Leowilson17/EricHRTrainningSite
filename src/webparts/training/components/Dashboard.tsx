@@ -1658,7 +1658,7 @@ const Dashboard = (props: IProps): JSX.Element => {
           ? NotAcknowledgedQuiz.join(";").trim()
           : "",
         Comments: valueObj.Comments,
-        Status1: FileStatus,
+        Status: FileStatus,
         QuizStatus: QuizStatus,
       };
 
